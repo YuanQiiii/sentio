@@ -199,6 +199,7 @@ cargo doc --workspace --open
 ### 添加新功能
 
 1. **创建新服务**:
+
    ```bash
    mkdir services/new_service
    cd services/new_service
@@ -206,6 +207,7 @@ cargo doc --workspace --open
    ```
 
 2. **更新工作空间配置**:
+
    ```toml
    # Cargo.toml
    [workspace]
@@ -228,6 +230,7 @@ cargo doc --workspace --open
 ### 生产环境部署
 
 1. **环境准备**:
+
    ```bash
    # 安装 MongoDB
    # 配置 SMTP 服务
@@ -235,11 +238,13 @@ cargo doc --workspace --open
    ```
 
 2. **构建发布版本**:
+
    ```bash
    cargo build --release --workspace
    ```
 
 3. **配置生产环境变量**:
+
    ```bash
    export SENTIO_DATABASE__URL="mongodb://prod-host:27017/sentio"
    export SENTIO_LLM__API_KEY="your-production-api-key"
@@ -247,6 +252,7 @@ cargo doc --workspace --open
    ```
 
 4. **启动服务**:
+
    ```bash
    ./target/release/sentio_core
    ```
