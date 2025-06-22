@@ -1,0 +1,22 @@
+[package]
+name = "sentio_email"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# 核心依赖
+shared_logic = { path = "../shared_logic" }
+anyhow = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+
+# 邮件相关依赖
+lettre = "0.11"
+mail-parser = "0.9"
+async-trait = "0.1"
+rand = "0.8"
+
+[dev-dependencies]
+tokio-test = "0.4"

@@ -1,19 +1,19 @@
 //! # 配置管理模块
-//! 
+//!
 //! 这个模块提供了全局的配置管理功能。配置在应用初始化时加载一次，
 //! 然后作为只读的全局变量供所有组件使用。
-//! 
+//!
 //! ## 特性
-//! 
+//!
 //! - 从配置文件和环境变量加载配置
 //! - 全局单例模式，保证配置的一致性
 //! - 线程安全的配置访问
 //! - 环境变量优先级高于配置文件
-//! 
+//!
 //! ## 环境变量格式
-//! 
+//!
 //! 使用 `SENTIO_` 前缀，嵌套字段用双下划线 `__` 分隔：
-//! 
+//!
 //! ```bash
 //! SENTIO_DATABASE__URL=mongodb://localhost:27017/sentio
 //! SENTIO_LLM__API_KEY=your-api-key
@@ -56,24 +56,8 @@ pub struct DatabaseConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmailConfig {
-    /// IMAP服务器配置
-    pub imap: ImapConfig,
     /// SMTP服务器配置  
     pub smtp: SmtpConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ImapConfig {
-    /// IMAP服务器地址
-    pub host: String,
-    /// IMAP服务器端口
-    pub port: u16,
-    /// 用户名
-    pub username: String,
-    /// 密码
-    pub password: String,
-    /// 是否使用TLS
-    pub use_tls: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -208,13 +192,6 @@ impl Default for Config {
                 connect_timeout: 30,
             },
             email: EmailConfig {
-                imap: ImapConfig {
-                    host: "imap.gmail.com".to_string(),
-                    port: 993,
-                    username: "your-email@example.com".to_string(),
-                    password: "your-app-password".to_string(),
-                    use_tls: true,
-                },
                 smtp: SmtpConfig {
                     host: "smtp.gmail.com".to_string(),
                     port: 587,
@@ -247,21 +224,21 @@ impl Default for Config {
 }
 
 /// 初始化全局配置
-/// 
+///
 /// 这个函数应该在应用启动时调用一次。它会加载配置并设置全局配置实例。
 /// 如果配置已经初始化过，再次调用会返回错误。
-/// 
+///
 /// # 错误
-/// 
+///
 /// - 如果配置文件格式错误
 /// - 如果环境变量格式错误
 /// - 如果全局配置已经被初始化过
-/// 
+///
 /// # 示例
-/// 
+///
 /// ```rust
 /// use shared_logic::config;
-/// 
+///
 /// #[tokio::main]
 /// async fn main() -> anyhow::Result<()> {
 ///     config::initialize_config().await?;
@@ -274,51 +251,58 @@ impl Default for Config {
 /// ```
 pub async fn initialize_config() -> Result<()> {
     let config = Config::from_env()?;
-    
-    GLOBAL_CONFIG.set(config)
+
+    GLOBAL_CONFIG
+        .set(config)
         .map_err(|_| anyhow::anyhow!("Global config has already been initialized"))?;
-        
+
     tracing::info!("Global configuration initialized successfully");
     Ok(())
 }
 
 /// 获取全局配置的只读引用
-/// 
+///
 /// 这个函数提供对全局配置的线程安全访问。配置必须先通过
 /// [`initialize_config`] 初始化，否则会 panic。
-/// 
+///
 /// # Panics
-/// 
+///
 /// 如果全局配置尚未初始化，这个函数会 panic。
-/// 
+///
 /// # 示例
-/// 
+///
 /// ```rust
 /// use shared_logic::config;
-/// 
-/// let config = config::get_config();
-/// println!("LLM Provider: {}", config.llm.provider);
+///
+/// #[tokio::main]
+/// async fn main() -> anyhow::Result<()> {
+///     config::initialize_config().await?;
+///     let config = config::get_config();
+///     println!("LLM Provider: {}", config.llm.provider);
+///     Ok(())
+/// }
 /// ```
 pub fn get_config() -> &'static Config {
-    GLOBAL_CONFIG.get()
+    GLOBAL_CONFIG
+        .get()
         .expect("Global config has not been initialized. Call initialize_config() first.")
 }
 
 /// 尝试获取全局配置的只读引用
-/// 
+///
 /// 这是 [`get_config`] 的安全版本，如果配置未初始化会返回 None
 /// 而不是 panic。
-/// 
+///
 /// # 返回值
-/// 
+///
 /// - `Some(&Config)` - 如果配置已初始化
 /// - `None` - 如果配置尚未初始化
-/// 
+///
 /// # 示例
-/// 
+///
 /// ```rust
 /// use shared_logic::config;
-/// 
+///
 /// if let Some(config) = config::try_get_config() {
 ///     println!("Database URL: {}", config.database.url);
 /// } else {
@@ -330,19 +314,23 @@ pub fn try_get_config() -> Option<&'static Config> {
 }
 
 /// 检查全局配置是否已经初始化
-/// 
+///
 /// # 返回值
-/// 
+///
 /// - `true` - 如果配置已初始化
 /// - `false` - 如果配置尚未初始化
-/// 
+///
 /// # 示例
-/// 
+///
 /// ```rust
 /// use shared_logic::config;
-/// 
-/// if !config::is_initialized() {
-///     config::initialize_config().await?;
+///
+/// #[tokio::main]
+/// async fn main() -> anyhow::Result<()> {
+///     if !config::is_initialized() {
+///         config::initialize_config().await?;
+///     }
+///     Ok(())
 /// }
 /// ```
 pub fn is_initialized() -> bool {

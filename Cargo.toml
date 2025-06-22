@@ -4,6 +4,7 @@ members = [
     "services/shared_logic",
     "services/telemetry",
     "services/memory",
+    "services/email",
 ]
 resolver = "2"
 

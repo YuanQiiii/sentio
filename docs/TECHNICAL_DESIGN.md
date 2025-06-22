@@ -1,5 +1,8 @@
 ### **技术设计文档：基于推理增强型LLM的个性化记忆AI邮件伙伴系统**
 
+> **当前实现状态**: 基础架构已完成，包括配置管理、SMTP邮件发送、遥测系统和数据模型  
+> **更新时间**: 2024年12月19日
+
 -----
 
 ### **1.0 文档概述 (Document Overview)**
@@ -37,6 +40,19 @@
 
 #### **2.2 系统架构图 (System Architecture Diagram)**
 
+##### **当前实现架构**
+
+```text
+services/
+├── shared_logic/     # 🔧 全局配置管理和共享逻辑
+├── core/            # 🚀 核心服务 (邮件处理和 LLM 交互)
+├── email/           # 📧 SMTP 邮件发送服务
+├── telemetry/       # 📊 遥测和日志服务
+└── memory/          # 🧠 记忆数据模型和存储
+```
+
+##### **理想目标架构**
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -47,7 +63,7 @@ sequenceDiagram
     participant Database as Database (MongoDB/DynamoDB)
 
     User->>MailServer: 发送邮件
-    MailServer-->>IngestionService: IMAP/Webhook 触发新邮件事件
+    MailServer-->>IngestionService: 外部邮件导入或触发新邮件事件
     IngestionService->>Database: 根据发件人ID查询记忆体
     Database-->>IngestionService: 返回用户记忆体JSON
     IngestionService->>ReasoningCore: 激活并发送(邮件原文 + 记忆体)
@@ -131,7 +147,7 @@ sequenceDiagram
 
 #### **4.1 邮件接收与预处理 (Email Ingestion & Pre-processing)**
 
-1. **监听**: 使用IMAP IDLE或Webhook监听新邮件。
+1. **监听**: 使用外部邮件导入或Webhook监听新邮件。
 2. **解析**: 解析邮件头（`From`, `Message-ID`, `Date`）和邮件体（纯文本内容，过滤HTML）。
 3. **身份识别**: 提取发件人邮箱作为`userId`。
 4. **记忆加载**: 从数据库中检索该`userId`的记忆体文档。若不存在，则初始化一个空的记忆体。

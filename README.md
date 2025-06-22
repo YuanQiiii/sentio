@@ -5,6 +5,7 @@
 ## 🎯 项目概述
 
 Sentio 是一个智能邮件助手系统，能够：
+
 - 理解和记忆用户的个人信息、偏好和历史交互
 - 基于深度思考链（Chain of Thought）生成个性化回复
 - 维护长期的用户关系模型和交互策略
@@ -16,6 +17,7 @@ Sentio 是一个智能邮件助手系统，能够：
 services/
 ├── shared_logic/     # 共享逻辑和全局配置管理
 ├── core/            # 核心服务 (邮件处理和 LLM 交互)
+├── email/           # SMTP 邮件发送服务
 ├── telemetry/       # 遥测和日志服务
 └── memory/          # 记忆数据模型和存储
 ```
@@ -31,23 +33,27 @@ services/
 ### 安装和配置
 
 1. **克隆项目**
+
    ```bash
    git clone https://github.com/your-org/sentio-ai.git
    cd sentio-ai
    ```
 
 2. **配置环境变量**
+
    ```bash
    cp .env.example .env
    # 编辑 .env 文件，填入您的配置
    ```
 
 3. **构建项目**
+
    ```bash
    cargo build --workspace
    ```
 
 4. **运行系统**
+
    ```bash
    cargo run --bin sentio_core
    ```
@@ -68,13 +74,6 @@ services/
 #### 邮件配置示例
 
 ```bash
-# IMAP 配置
-SENTIO_EMAIL__IMAP__HOST=imap.gmail.com
-SENTIO_EMAIL__IMAP__PORT=993
-SENTIO_EMAIL__IMAP__USERNAME=your-email@gmail.com
-SENTIO_EMAIL__IMAP__PASSWORD=your-app-password
-SENTIO_EMAIL__IMAP__USE_TLS=true
-
 # SMTP 配置
 SENTIO_EMAIL__SMTP__HOST=smtp.gmail.com
 SENTIO_EMAIL__SMTP__PORT=587
@@ -89,6 +88,7 @@ SENTIO_EMAIL__SMTP__USE_TLS=true
 
 - [Shared Logic 服务](services/shared_logic/README.md) - 全局配置和共享逻辑
 - [Core 服务](services/core/README.md) - 核心邮件处理逻辑
+- [Email 服务](services/email/README.md) - SMTP 邮件发送服务
 - [Telemetry 服务](services/telemetry/README.md) - 日志和监控
 - [Memory 服务](services/memory/README.md) - 数据模型和记忆管理
 
@@ -101,7 +101,7 @@ SENTIO_EMAIL__SMTP__USE_TLS=true
 
 ### 项目结构
 
-```
+```text
 ├── services/              # 微服务模块
 │   ├── shared_logic/      # 共享逻辑
 │   │   ├── src/
@@ -110,6 +110,7 @@ SENTIO_EMAIL__SMTP__USE_TLS=true
 │   │   │   └── lib.rs     # 模块入口
 │   │   └── README.md
 │   ├── core/              # 核心服务
+│   ├── email/             # 邮件发送服务
 │   ├── telemetry/         # 遥测服务
 │   └── memory/            # 记忆管理
 ├── Config.toml            # 配置文件
@@ -150,7 +151,7 @@ cargo fmt --workspace
 
 ### 数据流
 
-```
+```text
 邮件接收 → 内容解析 → 记忆检索 → LLM 推理 → 回复生成 → 邮件发送
      ↓
 记忆更新 ← 交互记录 ← 策略调整 ← 反思分析 ←

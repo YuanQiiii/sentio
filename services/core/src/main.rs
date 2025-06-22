@@ -1,16 +1,16 @@
 use anyhow::Result;
-use shared_logic::config;
 use sentio_telemetry;
+use shared_logic::config;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // 第一步：初始化全局配置
     config::initialize_config().await?;
-    
+
     // 第二步：基于配置初始化遥测系统
     let global_config = config::get_config();
     sentio_telemetry::init_telemetry_with_config(&global_config.telemetry)?;
-    
+
     // 第三步：打印启动日志
     tracing::info!(
         log_level = ?global_config.telemetry.log_level,
@@ -20,24 +20,23 @@ async fn main() -> Result<()> {
         server_port = %global_config.server.port,
         "Configuration loaded successfully. System starting."
     );
-    
+
     // 展示一些配置加载的详细信息
     tracing::debug!(
-        imap_host = %global_config.email.imap.host,
         smtp_host = %global_config.email.smtp.host,
         "Email configuration loaded"
     );
-    
+
     tracing::debug!(
         model = %global_config.llm.model,
         timeout = %global_config.llm.timeout,
         max_retries = %global_config.llm.max_retries,
         "LLM configuration loaded"
     );
-    
+
     // 演示在程序其他地方如何访问全局配置
     demonstrate_global_config_access();
-    
+
     // 程序正常退出
     tracing::info!("System shutdown completed.");
     Ok(())

@@ -31,13 +31,6 @@ url = "mongodb://localhost:27017/sentio"
 max_connections = 10
 connect_timeout = 30
 
-[email.imap]
-host = "imap.gmail.com"
-port = 993
-username = "your-email@example.com"
-password = "your-app-password"
-use_tls = true
-
 [email.smtp]
 host = "smtp.gmail.com"
 port = 587
