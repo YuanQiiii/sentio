@@ -25,7 +25,7 @@ pub struct MemoryCorpus {
 }
 
 /// 核心档案信息
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CoreProfile {
     /// 用户姓名或称呼
     pub name: Option<String>,
@@ -172,7 +172,7 @@ pub struct SkillExpertise {
 }
 
 /// 行动状态记忆 - 待办事项和计划
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ActionStateMemory {
     /// 当前的待办事项
     pub current_tasks: Vec<Task>,
@@ -315,21 +315,6 @@ impl Default for MemoryCorpus {
     }
 }
 
-impl Default for CoreProfile {
-    fn default() -> Self {
-        Self {
-            name: None,
-            age: None,
-            gender: None,
-            city: None,
-            occupation: None,
-            relationships: Vec::new(),
-            personality_traits: Vec::new(),
-            current_life_summary: None,
-        }
-    }
-}
-
 impl Default for SemanticMemory {
     fn default() -> Self {
         Self {
@@ -344,16 +329,6 @@ impl Default for SemanticMemory {
             significant_events: Vec::new(),
             skills_and_expertise: Vec::new(),
             values_and_beliefs: Vec::new(),
-        }
-    }
-}
-
-impl Default for ActionStateMemory {
-    fn default() -> Self {
-        Self {
-            current_tasks: Vec::new(),
-            future_plans: Vec::new(),
-            follow_ups: Vec::new(),
         }
     }
 }

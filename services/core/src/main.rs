@@ -1,5 +1,4 @@
 use anyhow::Result;
-use sentio_telemetry;
 use shared_logic::config;
 
 #[tokio::main]

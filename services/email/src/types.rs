@@ -1,5 +1,5 @@
 //! # 邮件服务类型定义
-//! 
+//!
 //! 这个模块定义了邮件服务中使用的所有数据类型。
 //! 专注于 SMTP 邮件发送功能，遵循 GUIDE.md 中的类型安全和清晰命名原则。
 
@@ -20,22 +20,22 @@ impl EmailAddress {
     pub fn new(email: String) -> Self {
         Self { email, name: None }
     }
-    
+
     /// 创建一个带显示名称的邮件地址
     pub fn with_name(email: String, name: String) -> Self {
-        Self { 
-            email, 
+        Self {
+            email,
             name: Some(name),
         }
     }
-    
+
     /// 验证邮件地址格式是否有效
     pub fn is_valid(&self) -> bool {
         // 简单的邮件地址验证
-        self.email.contains('@') && 
-        self.email.contains('.') &&
-        !self.email.starts_with('@') &&
-        !self.email.ends_with('@')
+        self.email.contains('@')
+            && self.email.contains('.')
+            && !self.email.starts_with('@')
+            && !self.email.ends_with('@')
     }
 }
 
@@ -85,7 +85,7 @@ impl EmailBody {
             content_type: "text/plain".to_string(),
         }
     }
-    
+
     /// 创建 HTML 邮件正文
     pub fn html(content: String) -> Self {
         Self {
@@ -94,12 +94,12 @@ impl EmailBody {
             content_type: "text/html".to_string(),
         }
     }
-    
+
     /// 获取最佳显示内容
     pub fn get_display_content(&self) -> Option<&String> {
         self.text.as_ref().or(self.html.as_ref())
     }
-    
+
     /// 检查是否有内容
     pub fn is_empty(&self) -> bool {
         self.text.is_none() && self.html.is_none()
@@ -133,10 +133,10 @@ impl EmailAttachment {
             "image/gif",
             "application/pdf",
         ];
-        
+
         SAFE_TYPES.contains(&self.content_type.as_str())
     }
-    
+
     /// 检查文件大小是否合理（< 10MB）
     pub fn is_reasonable_size(&self) -> bool {
         self.size < 10 * 1024 * 1024 // 10MB
@@ -168,7 +168,12 @@ pub struct OutgoingMessage {
 
 impl OutgoingMessage {
     /// 创建一个新的待发送邮件
-    pub fn new(from: EmailAddress, to: Vec<EmailAddress>, subject: String, body: EmailBody) -> Self {
+    pub fn new(
+        from: EmailAddress,
+        to: Vec<EmailAddress>,
+        subject: String,
+        body: EmailBody,
+    ) -> Self {
         Self {
             from,
             to,
@@ -181,19 +186,19 @@ impl OutgoingMessage {
             headers: HashMap::new(),
         }
     }
-    
+
     /// 添加抄送收件人
     pub fn add_cc(mut self, cc: EmailAddress) -> Self {
         self.cc.push(cc);
         self
     }
-    
+
     /// 添加密送收件人
     pub fn add_bcc(mut self, bcc: EmailAddress) -> Self {
         self.bcc.push(bcc);
         self
     }
-    
+
     /// 设置为回复邮件
     pub fn reply_to(mut self, original_message_id: MessageId) -> Self {
         self.in_reply_to = Some(original_message_id);
@@ -203,66 +208,66 @@ impl OutgoingMessage {
         }
         self
     }
-    
+
     /// 添加附件
     pub fn add_attachment(mut self, attachment: EmailAttachment) -> Self {
         self.attachments.push(attachment);
         self
     }
-    
+
     /// 添加自定义邮件头
     pub fn add_header(mut self, key: String, value: String) -> Self {
         self.headers.insert(key, value);
         self
     }
-    
+
     /// 验证邮件是否可以发送
     pub fn validate(&self) -> Result<(), String> {
         if !self.from.is_valid() {
             return Err(format!("无效的发件人地址: {}", self.from.email));
         }
-        
+
         if self.to.is_empty() {
             return Err("收件人列表不能为空".to_string());
         }
-        
+
         for addr in &self.to {
             if !addr.is_valid() {
                 return Err(format!("无效的收件人地址: {}", addr.email));
             }
         }
-        
+
         for addr in &self.cc {
             if !addr.is_valid() {
                 return Err(format!("无效的抄送地址: {}", addr.email));
             }
         }
-        
+
         for addr in &self.bcc {
             if !addr.is_valid() {
                 return Err(format!("无效的密送地址: {}", addr.email));
             }
         }
-        
+
         if self.subject.trim().is_empty() {
             return Err("邮件主题不能为空".to_string());
         }
-        
+
         if self.body.is_empty() {
             return Err("邮件内容不能为空".to_string());
         }
-        
+
         // 检查附件
         for attachment in &self.attachments {
             if !attachment.is_safe_type() {
                 return Err(format!("不安全的附件类型: {}", attachment.content_type));
             }
-            
+
             if !attachment.is_reasonable_size() {
                 return Err(format!("附件 {} 过大", attachment.filename));
             }
         }
-        
+
         Ok(())
     }
 }
