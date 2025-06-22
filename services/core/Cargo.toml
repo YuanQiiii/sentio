@@ -1,0 +1,12 @@
+[package]
+name = "sentio_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+shared_logic = { path = "../shared_logic" }
+sentio_telemetry = { path = "../telemetry" }
+sentio_memory = { path = "../memory" }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
