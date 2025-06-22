@@ -5,6 +5,7 @@ members = [
     "services/telemetry",
     "services/memory",
     "services/email",
+    "services/llm",
 ]
 resolver = "2"
 

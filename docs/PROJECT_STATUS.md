@@ -79,7 +79,7 @@ sentio-ai/
 ### 阶段二：核心功能实现
 
 - [x] **邮件服务** - SMTP 邮件发送完成，移除 IMAP 相关代码
-- [ ] **LLM 集成** - DeepSeek API 集成和思考链实现
+- [x] **LLM 集成** - DeepSeek API 集成和完整的 LLM 服务模块
 - [ ] **记忆管理** - MongoDB 集成和记忆 CRUD 操作
 - [ ] **工具集 API** - Memory_Interface 和其他工具函数
 

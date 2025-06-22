@@ -88,6 +88,7 @@ SENTIO_EMAIL__SMTP__USE_TLS=true
 
 - [Shared Logic 服务](services/shared_logic/README.md) - 全局配置和共享逻辑
 - [Core 服务](services/core/README.md) - 核心邮件处理逻辑
+- [LLM 服务](services/llm/README.md) - 大语言模型集成和智能分析
 - [Email 服务](services/email/README.md) - SMTP 邮件发送服务
 - [Telemetry 服务](services/telemetry/README.md) - 日志和监控
 - [Memory 服务](services/memory/README.md) - 数据模型和记忆管理
@@ -110,6 +111,7 @@ SENTIO_EMAIL__SMTP__USE_TLS=true
 │   │   │   └── lib.rs     # 模块入口
 │   │   └── README.md
 │   ├── core/              # 核心服务
+│   ├── llm/               # LLM 集成服务
 │   ├── email/             # 邮件发送服务
 │   ├── telemetry/         # 遥测服务
 │   └── memory/            # 记忆管理
