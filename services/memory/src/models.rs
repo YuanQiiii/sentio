@@ -70,6 +70,8 @@ pub struct EpisodicMemory {
 pub struct InteractionLog {
     /// 日志唯一ID
     pub log_id: String,
+    /// 用户ID（交互对象标识）
+    pub user_id: String,
     /// 邮件ID (来自邮件头)
     pub email_id: Option<String>,
     /// 时间戳
@@ -88,6 +90,25 @@ pub struct InteractionLog {
     pub reasoning_chain_snapshot: Option<String>,
     /// 本次交互成本 (USD)
     pub cost_usd: Option<f64>,
+}
+
+impl InteractionLog {
+    /// 创建新的交互记录
+    pub fn new(user_id: String, direction: MessageDirection, summary: String) -> Self {
+        Self {
+            log_id: uuid::Uuid::new_v4().to_string(),
+            user_id,
+            email_id: None,
+            timestamp: chrono::Utc::now(),
+            direction,
+            summary,
+            emotional_tone: Vec::new(),
+            key_topics: Vec::new(),
+            llm_model_version: "demo".to_string(),
+            reasoning_chain_snapshot: None,
+            cost_usd: None,
+        }
+    }
 }
 
 /// 消息方向枚举
