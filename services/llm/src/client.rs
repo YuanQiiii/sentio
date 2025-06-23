@@ -151,9 +151,19 @@ impl LlmClient for DeepSeekClient {
         // 3. 执行请求（包含重试逻辑）
         let mut attempt = 0;
         let max_retries = self.config.max_retries;
+
+        // 构建完整的 API 端点 URL
+        let api_url = if self.config.base_url.ends_with("/chat/completions") {
+            self.config.base_url.clone()
+        } else if self.config.base_url.ends_with('/') {
+            format!("{}chat/completions", self.config.base_url)
+        } else {
+            format!("{}/chat/completions", self.config.base_url)
+        };
+
         let response_value = loop {
             attempt += 1;
-            let request_builder = self.http_client.post(&self.config.base_url).json(&body);
+            let request_builder = self.http_client.post(&api_url).json(&body);
 
             match request_builder.send().await {
                 Ok(response) => {

@@ -156,7 +156,7 @@ impl fmt::Display for LogLevel {
 impl Config {
     /// 从环境变量和配置文件加载配置
     pub fn from_env() -> Result<Self> {
-        let settings = ConfigBuilder::builder()
+        let mut settings = ConfigBuilder::builder()
             // 首先设置默认值
             .set_default("database.url", "mongodb://localhost:27017/sentio")?
             .set_default("database.max_connections", 10)?
@@ -188,15 +188,20 @@ impl Config {
             .set_default("server.port", 8080)?
             .set_default("server.workers", 4)?
             // 添加 prompts.yaml 配置文件
-            // 默认情况下，它会寻找 config/prompts.yaml
             .add_source(File::with_name("config/prompts").required(false))
             // 从环境变量加载 (会覆盖文件配置)
             .add_source(
                 Environment::with_prefix("SENTIO")
-                    .separator("__")
+                    .separator("_")
                     .try_parsing(true),
-            )
-            .build()?;
+            );
+
+        // 手动覆盖 API key 如果环境变量存在
+        if let Ok(api_key) = std::env::var("SENTIO_LLM_API_KEY") {
+            settings = settings.set_override("llm.api_key", api_key)?;
+        }
+
+        let settings = settings.build()?;
 
         let config: Config = settings.try_deserialize()?;
         Ok(config)
