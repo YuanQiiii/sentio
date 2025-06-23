@@ -18,14 +18,31 @@ Sentio 是一个智能邮件助手系统，具备以下核心能力：
 
 ## 🏗️ 系统架构
 
-```
-services/
-├── core/             # 核心服务和主程序入口
-├── memory/           # 记忆服务 (MongoDB 后端)
-├── llm/              # LLM 服务 (DeepSeek 等)
-├── email/            # 邮件服务 (SMTP 发送)
-├── telemetry/        # 遥测和日志服务
-└── shared_logic/     # 共享逻辑和配置管理
+```mermaid
+graph TD
+    subgraph "Sentio 服务架构"
+        Core("sentio_core<br/>(服务编排)")
+        Memory("sentio_memory<br/>(记忆管理)")
+        LLM("sentio_llm<br/>(LLM 集成)")
+        Email("sentio_email<br/>(邮件发送)")
+        Telemetry("sentio_telemetry<br/>(日志遥测)")
+        Shared("shared_logic<br/>(共享配置)")
+
+        Core --> Memory
+        Core --> LLM
+        Core --> Email
+        Core --> Telemetry
+
+        Memory --> Shared
+        LLM --> Shared
+        Email --> Shared
+        Telemetry --> Shared
+        Core --> Shared
+
+        Memory --> D1[(MongoDB)]
+        LLM --> D2[(DeepSeek API)]
+        Email --> D3[(SMTP Server)]
+    end
 ```
 
 ### 服务特性
