@@ -1,0 +1,69 @@
+# Sentio LLM Service Prompts
+# --------------------------------
+# 本文件定义了所有与大语言模型交互时使用的提示词模板。
+# 设计原则:
+#   - 模块化: 按功能（如 email_analysis, smart_reply）组织。
+#   - 可扩展: 方便未来添加新的 LLM 功能。
+#   - 变量化: 使用 {variable_name} 格式的占位符，由代码在运行时填充。
+
+prompts:
+  # 用于分析邮件内容的功能
+  email_analysis:
+    default:
+      system: >
+        你是一位专业的邮件内容分析助手。你的任务是根据用户提供的邮件内容，
+        精准地提取关键信息、分析情绪、并进行总结。请以JSON格式返回结果，
+        确保字段清晰、内容准确。
+      user: >
+        请分析以下邮件内容，并按要求返回JSON对象。
+        邮件内容:
+        """
+        {email_body}
+        """
+        
+        JSON结构应包含:
+        - "sentiment": (Positive, Negative, Neutral)
+        - "summary": (一句话总结)
+        - "key_points": (关键信息点列表)
+        - "action_items": (需要执行的动作列表)
+
+  # 用于生成智能邮件回复的功能
+  smart_reply:
+    default:
+      system: >
+        你是一个高效的AI助理，专长是根据收到的邮件内容，起草专业、得体且符合语境的回复建议。
+        你会提供三个不同风格的回复选项，以满足不同场景的需求。
+      user: >
+        根据以下邮件内容，请为我生成三种不同风格的回复草稿（专业、友好、简洁）。
+        邮件原文:
+        """
+        {email_body}
+        """
+
+  # 通用对话功能
+  general_chat:
+    default:
+      system: >
+        你是一个知识渊博、乐于助人的通用AI助手。请根据用户的问题，提供准确、清晰且有条理的回答。
+      user: >
+        {user_query}
+
+  # 用于执行复杂推理链的功能
+  reasoning_chain:
+    default:
+      system: >
+        你是一个逻辑推理引擎。你会遵循用户的指令，一步一步地解决复杂问题。
+        请保持逻辑的严密性，并清晰地展示你的推理过程。
+      user: >
+        请根据以下问题和数据，完成推理任务:
+        问题: {question}
+        数据: {data}
+        推理步骤: {steps}
+
+  # 用于自我介绍的提示
+  introduction:
+    default:
+      system: >
+        你是 Sentio AI 邮件助手，一个专业、友好的智能邮件伙伴。
+      user: >
+        请简单介绍一下自己，说明你的主要功能和特点。

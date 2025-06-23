@@ -16,14 +16,34 @@ pub type RequestId = Uuid;
 pub struct LlmRequest {
     /// 请求唯一标识符
     pub id: RequestId,
-    /// 系统提示词
-    pub system_prompt: String,
-    /// 用户输入消息
-    pub user_message: String,
+    /// 提示词名称，格式为 "category.name"
+    pub prompt_name: String,
+    /// 用于填充提示词模板的上下文
+    pub context: HashMap<String, serde_json::Value>,
     /// 请求参数
     pub parameters: LlmParameters,
     /// 请求创建时间
     pub created_at: DateTime<Utc>,
+}
+
+impl LlmRequest {
+    /// 创建一个新的 LLM 请求
+    pub fn new(prompt_name: String, context: HashMap<String, serde_json::Value>) -> Self {
+        let config = shared_logic::config::get_config();
+        Self {
+            id: Uuid::new_v4(),
+            prompt_name,
+            context,
+            parameters: LlmParameters {
+                model: config.llm.model.clone(),
+                temperature: 0.7, // 默认值
+                max_tokens: 2048, // 默认值
+                top_p: 1.0,       // 默认值
+                stream: false,    // 默认值
+            },
+            created_at: Utc::now(),
+        }
+    }
 }
 
 /// LLM 请求参数
@@ -229,24 +249,5 @@ impl Default for LlmParameters {
             top_p: 0.9,
             stream: false,
         }
-    }
-}
-
-impl LlmRequest {
-    /// 创建新的 LLM 请求
-    pub fn new(system_prompt: String, user_message: String) -> Self {
-        Self {
-            id: Uuid::new_v4(),
-            system_prompt,
-            user_message,
-            parameters: LlmParameters::default(),
-            created_at: Utc::now(),
-        }
-    }
-
-    /// 设置请求参数
-    pub fn with_parameters(mut self, parameters: LlmParameters) -> Self {
-        self.parameters = parameters;
-        self
     }
 }

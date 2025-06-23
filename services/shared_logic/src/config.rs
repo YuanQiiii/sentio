@@ -23,6 +23,7 @@
 use anyhow::Result;
 use config::{Config as ConfigBuilder, Environment, File};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::OnceLock;
 
@@ -34,7 +35,7 @@ static GLOBAL_CONFIG: OnceLock<Config> = OnceLock::new();
 pub struct Config {
     /// 数据库配置
     pub database: DatabaseConfig,
-    /// 邮件服务配置  
+    /// 邮件服务配置
     pub email: EmailConfig,
     /// LLM API配置
     pub llm: LlmConfig,
@@ -42,6 +43,8 @@ pub struct Config {
     pub telemetry: TelemetryConfig,
     /// 服务器配置
     pub server: ServerConfig,
+    /// LLM 提示词配置
+    pub prompts: PromptsConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,7 +59,7 @@ pub struct DatabaseConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmailConfig {
-    /// SMTP服务器配置  
+    /// SMTP服务器配置
     pub smtp: SmtpConfig,
 }
 
@@ -88,6 +91,22 @@ pub struct LlmConfig {
     pub timeout: u64,
     /// 最大重试次数
     pub max_retries: u32,
+}
+
+/// LLM 提示词配置
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromptsConfig {
+    #[serde(flatten)]
+    pub prompts: HashMap<String, HashMap<String, Prompt>>,
+}
+
+/// 单个提示词模板
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Prompt {
+    /// 系统提示词
+    pub system: String,
+    /// 用户提示词
+    pub user: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -168,9 +187,10 @@ impl Config {
             .set_default("server.host", "127.0.0.1")?
             .set_default("server.port", 8080)?
             .set_default("server.workers", 4)?
-            // 从配置文件加载（可选）
-            .add_source(File::with_name("Config").required(false))
-            // 从环境变量覆盖，使用 SENTIO_ 前缀（环境变量优先级最高）
+            // 添加 prompts.yaml 配置文件
+            // 默认情况下，它会寻找 config/prompts.yaml
+            .add_source(File::with_name("config/prompts").required(false))
+            // 从环境变量加载 (会覆盖文件配置)
             .add_source(
                 Environment::with_prefix("SENTIO")
                     .separator("__")
@@ -180,6 +200,29 @@ impl Config {
 
         let config: Config = settings.try_deserialize()?;
         Ok(config)
+    }
+
+    /// 获取指定名称的提示词
+    ///
+    /// # Panics
+    ///
+    /// 如果找不到指定名称的提示词，则会 panic。
+    pub fn get_prompt(&self, name: &str) -> Result<&Prompt> {
+        let parts: Vec<&str> = name.split('.').collect();
+        if parts.len() != 2 {
+            return Err(anyhow::anyhow!(
+                "Invalid prompt name format: '{}'. Expected 'category.name'.",
+                name
+            ));
+        }
+        let category = parts[0];
+        let prompt_name = parts[1];
+
+        self.prompts
+            .prompts
+            .get(category)
+            .and_then(|p| p.get(prompt_name))
+            .ok_or_else(|| anyhow::anyhow!("Prompt '{}' not found", name))
     }
 }
 
@@ -219,8 +262,37 @@ impl Default for Config {
                 port: 8080,
                 workers: 4,
             },
+            prompts: PromptsConfig {
+                prompts: HashMap::new(),
+            },
         }
     }
+}
+
+/// 加载配置
+///
+/// # 错误
+///
+/// - 如果配置文件格式错误
+/// - 如果环境变量格式错误
+pub fn load_config() -> Result<Config> {
+    let run_mode = std::env::var("RUN_MODE").unwrap_or_else(|_| "development".to_string());
+
+    let builder = ConfigBuilder::builder()
+        // 1. 从默认配置文件加载
+        .add_source(File::with_name("config/default.toml").required(false))
+        // 2. 从环境特定配置文件加载 (e.g., config/development.toml)
+        .add_source(File::with_name(&format!("config/{}", run_mode)).required(false))
+        // 3. 从 prompts.yaml 加载
+        .add_source(
+            File::with_name("config/prompts")
+                .format(config::FileFormat::Yaml)
+                .required(false),
+        )
+        // 4. 从环境变量加载 (SENTIO_DATABASE__URL)
+        .add_source(Environment::with_prefix("SENTIO").separator("__"));
+
+    builder.build()?.try_deserialize().map_err(Into::into)
 }
 
 /// 初始化全局配置
@@ -260,79 +332,113 @@ pub async fn initialize_config() -> Result<()> {
     Ok(())
 }
 
-/// 获取全局配置的只读引用
-///
-/// 这个函数提供对全局配置的线程安全访问。配置必须先通过
-/// [`initialize_config`] 初始化，否则会 panic。
+/// 获取对全局配置的引用
 ///
 /// # Panics
 ///
-/// 如果全局配置尚未初始化，这个函数会 panic。
-///
-/// # 示例
-///
-/// ```rust
-/// use shared_logic::config;
-///
-/// #[tokio::main]
-/// async fn main() -> anyhow::Result<()> {
-///     config::initialize_config().await?;
-///     let config = config::get_config();
-///     println!("LLM Provider: {}", config.llm.provider);
-///     Ok(())
-/// }
-/// ```
+/// 如果配置尚未初始化，则会 panic。
 pub fn get_config() -> &'static Config {
     GLOBAL_CONFIG
         .get()
-        .expect("Global config has not been initialized. Call initialize_config() first.")
+        .expect("全局配置尚未初始化，请先调用 load_config()")
 }
 
-/// 尝试获取全局配置的只读引用
-///
-/// 这是 [`get_config`] 的安全版本，如果配置未初始化会返回 None
-/// 而不是 panic。
-///
-/// # 返回值
-///
-/// - `Some(&Config)` - 如果配置已初始化
-/// - `None` - 如果配置尚未初始化
-///
-/// # 示例
-///
-/// ```rust
-/// use shared_logic::config;
-///
-/// if let Some(config) = config::try_get_config() {
-///     println!("Database URL: {}", config.database.url);
-/// } else {
-///     println!("Configuration not yet initialized");
-/// }
-/// ```
-pub fn try_get_config() -> Option<&'static Config> {
-    GLOBAL_CONFIG.get()
-}
+/// 单元测试
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::File;
+    use std::io::Write;
+    use tempfile::tempdir;
 
-/// 检查全局配置是否已经初始化
-///
-/// # 返回值
-///
-/// - `true` - 如果配置已初始化
-/// - `false` - 如果配置尚未初始化
-///
-/// # 示例
-///
-/// ```rust
-/// use shared_logic::config;
-///
-/// #[tokio::main]
-/// async fn main() -> anyhow::Result<()> {
-///     if !config::is_initialized() {
-///         config::initialize_config().await?;
-///     }
-///     Ok(())
-/// }
-/// ```
-pub fn is_initialized() -> bool {
-    GLOBAL_CONFIG.get().is_some()
+    #[test]
+    fn test_load_config_with_prompts() {
+        let dir = tempdir().unwrap();
+        let prompts_path = dir.path().join("prompts.yaml");
+
+        let mut file = File::create(&prompts_path).unwrap();
+        writeln!(
+            file,
+            r#"
+email_analysis:
+  summarize_thread:
+    system: "Summarize the email."
+    user: "Content: {{email_content}}"
+"#
+        )
+        .unwrap();
+
+        let builder = ConfigBuilder::builder()
+            .set_default("database.url", "test")
+            .unwrap()
+            .set_default("database.max_connections", 5)
+            .unwrap()
+            .set_default("database.connect_timeout", 5)
+            .unwrap()
+            .set_default("email.smtp.host", "test")
+            .unwrap()
+            .set_default("email.smtp.port", 587)
+            .unwrap()
+            .set_default("email.smtp.username", "test")
+            .unwrap()
+            .set_default("email.smtp.password", "test")
+            .unwrap()
+            .set_default("email.smtp.use_tls", false)
+            .unwrap()
+            .set_default("llm.provider", "test")
+            .unwrap()
+            .set_default("llm.api_key", "test")
+            .unwrap()
+            .set_default("llm.base_url", "test")
+            .unwrap()
+            .set_default("llm.model", "test")
+            .unwrap()
+            .set_default("llm.timeout", 5)
+            .unwrap()
+            .set_default("llm.max_retries", 1)
+            .unwrap()
+            .set_default("telemetry.log_level", "info")
+            .unwrap()
+            .set_default("telemetry.console", true)
+            .unwrap()
+            .set_default("telemetry.json_format", false)
+            .unwrap()
+            .set_default("server.host", "test")
+            .unwrap()
+            .set_default("server.port", 8000)
+            .unwrap()
+            .set_default("server.workers", 1)
+            .unwrap()
+            .add_source(config::File::from(prompts_path).format(config::FileFormat::Yaml));
+
+        let config: Config = builder.build().unwrap().try_deserialize().unwrap();
+
+        let prompt = config
+            .get_prompt("email_analysis.summarize_thread")
+            .unwrap();
+        assert_eq!(prompt.system, "Summarize the email.");
+        assert_eq!(prompt.user, "Content: {email_content}");
+    }
+
+    #[test]
+    fn test_get_prompt_not_found() {
+        let config = Config::default();
+        let result = config.get_prompt("non_existent.prompt");
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Prompt 'non_existent.prompt' not found"
+        );
+    }
+
+    #[test]
+    fn test_get_prompt_invalid_format() {
+        let config = Config::default();
+        let result = config.get_prompt("invalid_format");
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Invalid prompt name format: 'invalid_format'. Expected 'category.name'."
+        );
+    }
 }

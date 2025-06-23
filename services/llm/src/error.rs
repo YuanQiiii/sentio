@@ -24,6 +24,14 @@ pub enum LlmError {
     #[error("Configuration error: {field}")]
     ConfigurationError { field: String },
 
+    /// 提示词未找到
+    #[error("Prompt not found: {name}")]
+    PromptNotFound { name: String },
+
+    /// 内部错误，用于包装来自其他模块的错误
+    #[error("Internal error: {message}")]
+    InternalError { message: String },
+
     /// 序列化/反序列化错误
     #[error("Serialization error: {source}")]
     SerializationError {
@@ -58,6 +66,12 @@ pub enum LlmError {
 /// LLM 服务操作结果类型
 pub type LlmResult<T> = Result<T, LlmError>;
 
+impl From<anyhow::Error> for LlmError {
+    fn from(err: anyhow::Error) -> Self {
+        LlmError::InternalError { message: err.to_string() }
+    }
+}
+
 impl LlmError {
     /// 检查错误是否可重试
     pub fn is_retryable(&self) -> bool {
@@ -76,6 +90,8 @@ impl LlmError {
             LlmError::InvalidApiResponse { .. } => "INVALID_API_RESPONSE",
             LlmError::AuthenticationFailed { .. } => "AUTHENTICATION_FAILED",
             LlmError::ConfigurationError { .. } => "CONFIGURATION_ERROR",
+            LlmError::PromptNotFound { .. } => "PROMPT_NOT_FOUND",
+            LlmError::InternalError { .. } => "INTERNAL_ERROR",
             LlmError::SerializationError { .. } => "SERIALIZATION_ERROR",
             LlmError::NetworkError { .. } => "NETWORK_ERROR",
             LlmError::Timeout { .. } => "TIMEOUT",

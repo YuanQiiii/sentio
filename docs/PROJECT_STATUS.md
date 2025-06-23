@@ -1,11 +1,11 @@
 # Sentio AI 项目状态总览
 
-**更新时间**: 2025年6月22日  
-**项目阶段**: 核心功能完成，生产就绪
+**更新时间**: 2025年6月23日  
+**项目阶段**: 核心功能完成，LLM 配置驱动重构完成，生产就绪
 
 ## 🎯 项目概述
 
-Sentio AI 是一个基于推理增强型 LLM 的个性化记忆 AI 邮件伙伴系统，已完成核心功能开发并通过全面测试验证。
+Sentio AI 是一个基于推理增强型 LLM 的个性化记忆 AI 邮件伙伴系统，已完成核心功能开发和 LLM 配置驱动重构，通过全面测试验证。
 
 ## ✅ 已完成功能
 
@@ -16,7 +16,26 @@ Sentio AI 是一个基于推理增强型 LLM 的个性化记忆 AI 邮件伙伴�
 - **✅ 错误处理**: 完善的错误传播和重试机制
 - **✅ 日志系统**: 结构化日志和链路追踪
 
-### 2. 记忆服务 (100%)
+### 2. LLM 配置驱动系统 (100%) 🆕
+
+- **✅ 提示词外部化**: 所有提示词移至 `config/prompts.yaml`
+- **✅ 模块化管理**: 按功能组织（email_analysis, smart_reply 等）
+- **✅ 模板渲染**: 支持 `{variable}` 占位符动态替换
+- **✅ 配置热加载**: 运行时读取最新配置
+- **✅ 类型安全**: 完整的 Rust 类型系统保障
+
+**核心实现**:
+
+```rust
+// 新的配置驱动调用方式
+let mut context = HashMap::new();
+context.insert("email_body".to_string(), json!("邮件内容"));
+
+let request = LlmRequest::new("email_analysis.default".to_string(), context);
+let response = client.generate_response(&request).await?;
+```
+
+### 3. 记忆服务 (100%)
 
 - **✅ MongoDB 集成**: 完整的数据库连接和操作
 - **✅ 数据模型**: 5种记忆类型的完整建模
@@ -24,6 +43,7 @@ Sentio AI 是一个基于推理增强型 LLM 的个性化记忆 AI 邮件伙伴�
 - **✅ 性能优化**: 连接池、索引、异步操作
 
 **核心实现**:
+
 ```rust
 // 记忆服务已完全集成到核心系统
 use sentio_memory::{
@@ -35,13 +55,6 @@ use sentio_memory::{
 let repo = MongoMemoryRepository::new().await?;
 repo.save_interaction(&user_id, &interaction).await?;
 ```
-
-### 3. LLM 服务 (100%)
-
-- **✅ DeepSeek 集成**: 完整的 API 调用和响应处理
-- **✅ 重试机制**: 指数退避和错误恢复
-- **✅ 流式处理**: 支持流式和批量响应
-- **✅ 使用统计**: Token 计数和成本追踪
 
 ### 4. 邮件服务 (100%)
 

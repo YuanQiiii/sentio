@@ -30,5 +30,5 @@ pub mod config;
 pub mod types;
 
 // 重新导出主要的公共接口
-pub use config::{get_config, initialize_config, Config};
+pub use config::{get_config, initialize_config, Config, Prompt, PromptsConfig};
 pub use types::*;

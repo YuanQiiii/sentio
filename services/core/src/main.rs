@@ -3,6 +3,7 @@ use sentio_llm::{DeepSeekClient, LlmClient, LlmRequest};
 use shared_logic::config;
 // 测试记忆服务导入
 use sentio_memory::{InteractionLog, MemoryRepository, MessageDirection, MongoMemoryRepository};
+use std::collections::HashMap;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -67,6 +68,15 @@ fn demonstrate_global_config_access() {
         "Demonstrating global config access - Database max connections: {}",
         config.database.max_connections
     );
+
+    // 演示访问提示词配置
+    match config.get_prompt("introduction.default") {
+        Ok(prompt) => tracing::info!(
+            "Successfully accessed prompt 'introduction.default': User prompt starts with '{}...'",
+            prompt.user.chars().take(50).collect::<String>()
+        ),
+        Err(e) => tracing::error!("Failed to access prompt 'introduction.default': {}", e),
+    }
 }
 
 /// 演示 LLM 服务集成
@@ -76,15 +86,14 @@ async fn demonstrate_llm_integration() -> Result<()> {
     // 创建 LLM 客户端
     let llm_client = DeepSeekClient::new()?;
 
-    // 创建示例请求
-    let request = LlmRequest::new(
-        "你是 Sentio AI 邮件助手，一个专业、友好的智能邮件伙伴。".to_string(),
-        "请简单介绍一下自己，说明你的主要功能和特点。".to_string(),
-    );
+    // 创建示例请求，使用在 prompts.yaml 中定义的名称
+    // 这里我们使用 "introduction.default"，并且不需要任何上下文变量
+    let request = LlmRequest::new("introduction.default".to_string(), HashMap::new());
 
     tracing::info!(
         request_id = %request.id,
-        "Sending demo request to LLM"
+        prompt_name = %request.prompt_name,
+        "Sending demo request to LLM using configuration-driven prompt"
     );
 
     // 发送请求（仅在有效 API 密钥时执行）

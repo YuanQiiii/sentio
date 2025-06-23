@@ -79,7 +79,19 @@ graph TD
    # 编辑 .env 文件配置数据库和 API 密钥
    ```
 
-3. **启动 MongoDB (可选)**
+3. **配置提示词**
+
+   系统使用 `config/prompts.yaml` 管理所有 LLM 提示词：
+
+   ```yaml
+   prompts:
+     email_analysis:
+       default:
+         system: "你是一位专业的邮件内容分析助手..."
+         user: "请分析以下邮件内容: {email_body}"
+   ```
+
+4. **启动 MongoDB (可选)**
 
    ```bash
    # 使用 Docker
@@ -89,6 +101,8 @@ graph TD
    mongod --dbpath /your/db/path
    ```
 
+5. **构建和测试**
+
    ```bash
    # 构建项目
    cargo build --workspace
@@ -97,14 +111,14 @@ graph TD
    cargo test --workspace
    ```
 
-5. **运行系统**
+6. **运行系统**
 
    ```bash
    # 运行核心服务
-   cargo run --bin sentio_core
+   cargo run -p sentio_core
    
    # 或使用 watch 模式进行开发
-   cargo watch -x "run --bin sentio_core"
+   cargo watch -x "run -p sentio_core"
    ```
 
 ### 配置说明
@@ -118,7 +132,7 @@ graph TD
 | 数据库 URL | `SENTIO_DATABASE__URL` | `mongodb://localhost:27017/sentio` | MongoDB 连接 |
 | LLM API 密钥 | `SENTIO_LLM__API_KEY` | `your-api-key` | DeepSeek API 密钥 |
 | 日志级别 | `SENTIO_TELEMETRY__LOG_LEVEL` | `info` | 日志详细程度 |
-| 服务器端口 | `SENTIO_SERVER__PORT` | `8080` | 服务监听端口 |
+| 提示词配置 | - | `config/prompts.yaml` | LLM 提示词模板 |
 
 #### 环境变量示例
 
@@ -148,6 +162,9 @@ SENTIO_EMAIL__SMTP__PASSWORD=your-app-password
 
 ### 🤖 智能引擎
 
+- **配置驱动**: 所有 LLM 提示词外部化管理，支持热更新
+- **模板渲染**: 支持 `{variable}` 占位符的动态内容替换
+- **多功能模块**: 邮件分析、智能回复、推理链等预置功能
 - **深度推理**: Chain of Thought 思考链生成
 - **个性化回复**: 基于用户画像的定制化响应
 - **情感分析**: 识别和适应用户情感状态
@@ -159,6 +176,63 @@ SENTIO_EMAIL__SMTP__PASSWORD=your-app-password
 - **富文本支持**: HTML 邮件格式
 - **附件处理**: 文件附件发送
 - **错误处理**: 重试机制和失败通知
+
+### 🎛️ LLM 配置驱动使用
+
+#### 配置提示词
+
+在 `config/prompts.yaml` 中定义提示词模板：
+
+```yaml
+prompts:
+  email_analysis:
+    default:
+      system: >
+        你是一位专业的邮件内容分析助手。请以JSON格式返回分析结果。
+      user: >
+        请分析以下邮件内容:
+        """
+        {email_body}
+        """
+        
+        返回JSON结构: {"sentiment": "...", "summary": "...", "key_points": [...]}
+        
+  smart_reply:
+    professional:
+      system: "你是一个专业的商务助手。"
+      user: "为以下邮件生成专业回复: {email_body}"
+    casual:
+      system: "你是一个友好的AI助手。"  
+      user: "为以下邮件生成友好回复: {email_body}"
+```
+
+#### 代码中使用
+
+```rust
+use sentio_llm::{LlmClient, LlmRequest, DeepSeekClient};
+use serde_json::json;
+use std::collections::HashMap;
+
+// 创建客户端
+let client = DeepSeekClient::new()?;
+
+// 准备上下文变量
+let mut context = HashMap::new();
+context.insert("email_body".to_string(), json!("用户的邮件内容..."));
+
+// 使用配置化的提示词发起请求
+let request = LlmRequest::new("email_analysis.default".to_string(), context);
+let response = client.generate_response(&request).await?;
+
+println!("分析结果: {}", response.content);
+```
+
+#### 支持的变量类型
+
+- **字符串变量**: `{email_body}`, `{user_name}`, `{subject}`
+- **JSON 数据**: `{data}`, `{context}`, `{metadata}`
+- **数组内容**: `{items}`, `{list}`, `{options}`
+- **复杂对象**: 自动序列化为 JSON 字符串
 
 ## � 服务文档
 
