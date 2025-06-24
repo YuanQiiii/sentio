@@ -68,7 +68,9 @@ pub type LlmResult<T> = Result<T, LlmError>;
 
 impl From<anyhow::Error> for LlmError {
     fn from(err: anyhow::Error) -> Self {
-        LlmError::InternalError { message: err.to_string() }
+        LlmError::InternalError {
+            message: err.to_string(),
+        }
     }
 }
 

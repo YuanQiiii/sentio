@@ -240,13 +240,13 @@ impl MemoryDataAccess {
     /// 创建或更新用户的记忆体
     pub async fn save_memory_corpus(corpus: &MemoryCorpus) -> DatabaseResult<ObjectId> {
         let collection: Collection<MemoryCorpus> = get_collection("memory_corpus");
-        
+
         // 验证数据
         Self::validate_memory_corpus(corpus)?;
-        
+
         let mut corpus_to_save = corpus.clone();
         corpus_to_save.updated_at = Utc::now();
-        
+
         match &corpus.id {
             Some(id) => {
                 // 更新现有记忆体
@@ -257,13 +257,13 @@ impl MemoryDataAccess {
                     .map_err(|e| DatabaseError::OperationFailed {
                         message: format!("Failed to update memory corpus: {}", e),
                     })?;
-                
+
                 if result.matched_count == 0 {
                     return Err(DatabaseError::NotFound {
                         resource: format!("Memory corpus with id: {}", id),
                     });
                 }
-                
+
                 Ok(*id)
             }
             None => {
@@ -275,117 +275,136 @@ impl MemoryDataAccess {
                     .map_err(|e| DatabaseError::OperationFailed {
                         message: format!("Failed to insert memory corpus: {}", e),
                     })?;
-                
+
                 Ok(result.inserted_id.as_object_id().unwrap())
             }
         }
     }
-    
+
     /// 根据用户ID获取记忆体
-    pub async fn get_memory_corpus_by_user_id(user_id: &str) -> DatabaseResult<Option<MemoryCorpus>> {
+    pub async fn get_memory_corpus_by_user_id(
+        user_id: &str,
+    ) -> DatabaseResult<Option<MemoryCorpus>> {
         let collection: Collection<MemoryCorpus> = get_collection("memory_corpus");
-        
+
         let result = collection
             .find_one(doc! { "user_id": user_id }, None)
             .await
             .map_err(|e| DatabaseError::OperationFailed {
                 message: format!("Failed to find memory corpus: {}", e),
             })?;
-        
+
         Ok(result)
     }
-    
+
     /// 添加记忆片段
     pub async fn add_memory_fragment(fragment: &MemoryFragment) -> DatabaseResult<ObjectId> {
         let collection: Collection<MemoryFragment> = get_collection("memory_fragments");
-        
+
         // 验证数据
         Self::validate_memory_fragment(fragment)?;
-        
+
         let mut fragment_to_save = fragment.clone();
         fragment_to_save.created_at = Utc::now();
-        
+
         let result = collection
             .insert_one(&fragment_to_save, None)
             .await
             .map_err(|e| DatabaseError::OperationFailed {
                 message: format!("Failed to insert memory fragment: {}", e),
             })?;
-        
+
         Ok(result.inserted_id.as_object_id().unwrap())
     }
-    
+
     /// 搜索记忆片段
-    pub async fn search_memory_fragments(query: &MemoryQuery) -> DatabaseResult<Vec<MemoryFragment>> {
+    pub async fn search_memory_fragments(
+        query: &MemoryQuery,
+    ) -> DatabaseResult<Vec<MemoryFragment>> {
         let collection: Collection<MemoryFragment> = get_collection("memory_fragments");
-        
+
         // 构建查询文档
         let mut filter = doc! { "user_id": &query.user_id };
-        
+
         if let Some(ref memory_types) = query.memory_types {
-            let type_names: Vec<String> = memory_types.iter()
-                .map(|t| serde_json::to_string(t).unwrap().trim_matches('"').to_string())
+            let type_names: Vec<String> = memory_types
+                .iter()
+                .map(|t| {
+                    serde_json::to_string(t)
+                        .unwrap()
+                        .trim_matches('"')
+                        .to_string()
+                })
                 .collect();
             filter.insert("memory_type", doc! { "$in": type_names });
         }
-        
+
         if let Some(ref keywords) = query.keywords {
             filter.insert("keywords", doc! { "$in": keywords });
         }
-        
+
         if let Some(min_importance) = query.min_importance {
             filter.insert("importance_score", doc! { "$gte": min_importance });
         }
-        
+
         if let Some(ref time_range) = query.time_range {
-            filter.insert("created_at", doc! { 
-                "$gte": time_range.start,
-                "$lte": time_range.end
-            });
+            filter.insert(
+                "created_at",
+                doc! {
+                    "$gte": time_range.start,
+                    "$lte": time_range.end
+                },
+            );
         }
-        
+
         // 构建查询选项
         let options = FindOptions::builder()
             .sort(doc! { "importance_score": -1, "created_at": -1 })
             .limit(query.limit.unwrap_or(100))
             .build();
-        
+
         let mut results = Vec::new();
         use futures::TryStreamExt;
-        
-        let mut cursor = collection
-            .find(filter, options)
-            .await
-            .map_err(|e| DatabaseError::OperationFailed {
-                message: format!("Failed to search memory fragments: {}", e),
-            })?;
-        
-        while let Some(doc) = cursor.try_next().await.map_err(|e| DatabaseError::OperationFailed {
-            message: format!("Failed to iterate cursor: {}", e),
-        })? {
+
+        let mut cursor =
+            collection
+                .find(filter, options)
+                .await
+                .map_err(|e| DatabaseError::OperationFailed {
+                    message: format!("Failed to search memory fragments: {}", e),
+                })?;
+
+        while let Some(doc) =
+            cursor
+                .try_next()
+                .await
+                .map_err(|e| DatabaseError::OperationFailed {
+                    message: format!("Failed to iterate cursor: {}", e),
+                })?
+        {
             results.push(doc);
         }
-        
+
         Ok(results)
     }
-    
+
     /// 记录交互日志
     pub async fn log_interaction(interaction: &InteractionLog) -> DatabaseResult<ObjectId> {
         let collection: Collection<InteractionLog> = get_collection("interactions");
-        
+
         // 验证数据
         Self::validate_interaction_log(interaction)?;
-        
+
         let result = collection
             .insert_one(interaction, None)
             .await
             .map_err(|e| DatabaseError::OperationFailed {
                 message: format!("Failed to insert interaction log: {}", e),
             })?;
-        
+
         Ok(result.inserted_id.as_object_id().unwrap())
     }
-    
+
     /// 获取用户交互历史
     pub async fn get_user_interactions(
         user_id: &str,
@@ -393,36 +412,42 @@ impl MemoryDataAccess {
         session_id: Option<&str>,
     ) -> DatabaseResult<Vec<InteractionLog>> {
         let collection: Collection<InteractionLog> = get_collection("interactions");
-        
+
         let mut filter = doc! { "user_id": user_id };
         if let Some(session) = session_id {
             filter.insert("session_id", session);
         }
-        
+
         let options = FindOptions::builder()
             .sort(doc! { "timestamp": -1 })
             .limit(limit.unwrap_or(100))
             .build();
-        
+
         let mut results = Vec::new();
         use futures::TryStreamExt;
-        
-        let mut cursor = collection
-            .find(filter, options)
-            .await
-            .map_err(|e| DatabaseError::OperationFailed {
-                message: format!("Failed to get user interactions: {}", e),
-            })?;
-        
-        while let Some(doc) = cursor.try_next().await.map_err(|e| DatabaseError::OperationFailed {
-            message: format!("Failed to iterate cursor: {}", e),
-        })? {
+
+        let mut cursor =
+            collection
+                .find(filter, options)
+                .await
+                .map_err(|e| DatabaseError::OperationFailed {
+                    message: format!("Failed to get user interactions: {}", e),
+                })?;
+
+        while let Some(doc) =
+            cursor
+                .try_next()
+                .await
+                .map_err(|e| DatabaseError::OperationFailed {
+                    message: format!("Failed to iterate cursor: {}", e),
+                })?
+        {
             results.push(doc);
         }
-        
+
         Ok(results)
     }
-    
+
     /// 获取用户统计信息
     pub async fn get_user_statistics(user_id: &str) -> DatabaseResult<UserStatistics> {
         // 获取记忆体信息
@@ -433,7 +458,7 @@ impl MemoryDataAccess {
             .map_err(|e| DatabaseError::OperationFailed {
                 message: format!("Failed to get memory corpus: {}", e),
             })?;
-        
+
         // 统计记忆片段
         let fragment_collection: Collection<MemoryFragment> = get_collection("memory_fragments");
         let total_memories = fragment_collection
@@ -442,7 +467,7 @@ impl MemoryDataAccess {
             .map_err(|e| DatabaseError::OperationFailed {
                 message: format!("Failed to count memory fragments: {}", e),
             })? as u64;
-        
+
         // 统计各类型记忆数量
         let mut memory_type_counts = HashMap::new();
         for memory_type in [
@@ -453,7 +478,7 @@ impl MemoryDataAccess {
             MemoryType::ActionState,
         ] {
             let count = fragment_collection
-                .count_documents(doc! { 
+                .count_documents(doc! {
                     "user_id": user_id,
                     "memory_type": serde_json::to_string(&memory_type).unwrap().trim_matches('"')
                 }, None)
@@ -463,7 +488,7 @@ impl MemoryDataAccess {
                 })? as u64;
             memory_type_counts.insert(memory_type, count);
         }
-        
+
         // 统计交互记录
         let interaction_collection: Collection<InteractionLog> = get_collection("interactions");
         let total_interactions = interaction_collection
@@ -472,24 +497,26 @@ impl MemoryDataAccess {
             .map_err(|e| DatabaseError::OperationFailed {
                 message: format!("Failed to count interactions: {}", e),
             })? as u64;
-        
+
         // 获取最后交互时间
         use mongodb::options::FindOneOptions;
         let last_interaction = interaction_collection
             .find_one(
                 doc! { "user_id": user_id },
-                FindOneOptions::builder().sort(doc! { "timestamp": -1 }).build(),
+                FindOneOptions::builder()
+                    .sort(doc! { "timestamp": -1 })
+                    .build(),
             )
             .await
             .map_err(|e| DatabaseError::OperationFailed {
                 message: format!("Failed to get last interaction: {}", e),
             })?
             .map(|log| log.timestamp);
-        
+
         let account_created = memory_corpus
             .map(|mc| mc.created_at)
             .unwrap_or_else(Utc::now);
-        
+
         Ok(UserStatistics {
             user_id: user_id.to_string(),
             total_memories,
@@ -499,11 +526,11 @@ impl MemoryDataAccess {
             account_created,
         })
     }
-    
+
     /// 删除用户的所有数据 (GDPR 合规)
     pub async fn delete_user_data(user_id: &str) -> DatabaseResult<u64> {
         let mut total_deleted = 0u64;
-        
+
         // 删除记忆体
         let memory_corpus_collection: Collection<MemoryCorpus> = get_collection("memory_corpus");
         let memory_result = memory_corpus_collection
@@ -513,7 +540,7 @@ impl MemoryDataAccess {
                 message: format!("Failed to delete memory corpus: {}", e),
             })?;
         total_deleted += memory_result.deleted_count;
-        
+
         // 删除记忆片段
         let fragment_collection: Collection<MemoryFragment> = get_collection("memory_fragments");
         let fragment_result = fragment_collection
@@ -523,7 +550,7 @@ impl MemoryDataAccess {
                 message: format!("Failed to delete memory fragments: {}", e),
             })?;
         total_deleted += fragment_result.deleted_count;
-        
+
         // 删除交互记录
         let interaction_collection: Collection<InteractionLog> = get_collection("interactions");
         let interaction_result = interaction_collection
@@ -533,16 +560,16 @@ impl MemoryDataAccess {
                 message: format!("Failed to delete interactions: {}", e),
             })?;
         total_deleted += interaction_result.deleted_count;
-        
+
         info!(
             user_id = user_id,
             total_deleted = total_deleted,
             "User data deleted successfully"
         );
-        
+
         Ok(total_deleted)
     }
-    
+
     // 私有验证方法
     fn validate_memory_corpus(corpus: &MemoryCorpus) -> DatabaseResult<()> {
         if corpus.user_id.is_empty() {
@@ -550,51 +577,51 @@ impl MemoryDataAccess {
                 details: "user_id cannot be empty".to_string(),
             });
         }
-        
+
         Ok(())
     }
-    
+
     fn validate_memory_fragment(fragment: &MemoryFragment) -> DatabaseResult<()> {
         if fragment.user_id.is_empty() {
             return Err(DatabaseError::ValidationError {
                 details: "user_id cannot be empty".to_string(),
             });
         }
-        
+
         if fragment.content.is_empty() {
             return Err(DatabaseError::ValidationError {
                 details: "content cannot be empty".to_string(),
             });
         }
-        
+
         if fragment.importance_score < 0.0 || fragment.importance_score > 1.0 {
             return Err(DatabaseError::ValidationError {
                 details: "importance_score must be between 0.0 and 1.0".to_string(),
             });
         }
-        
+
         Ok(())
     }
-    
+
     fn validate_interaction_log(interaction: &InteractionLog) -> DatabaseResult<()> {
         if interaction.user_id.is_empty() {
             return Err(DatabaseError::ValidationError {
                 details: "user_id cannot be empty".to_string(),
             });
         }
-        
+
         if interaction.session_id.is_empty() {
             return Err(DatabaseError::ValidationError {
                 details: "session_id cannot be empty".to_string(),
             });
         }
-        
+
         if interaction.content.is_empty() {
             return Err(DatabaseError::ValidationError {
                 details: "content cannot be empty".to_string(),
             });
         }
-        
+
         Ok(())
     }
 }

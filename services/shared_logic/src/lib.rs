@@ -27,9 +27,9 @@
 //! ```
 
 pub mod config;
-pub mod types;
 pub mod database;
 pub mod memory_data;
+pub mod types;
 
 // 重新导出主要的公共接口
 pub use config::{get_config, initialize_config, Config, Prompt, PromptsConfig};
@@ -37,15 +37,13 @@ pub use types::*;
 
 // 重新导出数据库相关接口
 pub use database::{
-    initialize_database, get_database, try_get_database, get_collection, check_database_health,
-    get_database_stats, DatabaseError, DatabaseResult, DatabaseStats,
+    check_database_health, get_collection, get_database, get_database_stats, initialize_database,
+    try_get_database, DatabaseError, DatabaseResult, DatabaseStats,
 };
 
 // 重新导出记忆数据访问接口
 pub use memory_data::{
-    MemoryDataAccess, MemoryFragment, MemoryCorpus, InteractionLog,
-    MemoryType, MemoryQuery, TimeRange, UserStatistics,
-    CoreProfile, EpisodicMemory, SemanticMemory, SkillExpertise,
-    StrategicInferentialMemory, ActionStateMemory, MessageDirection,
-    CommunicationStrategy,
+    ActionStateMemory, CommunicationStrategy, CoreProfile, EpisodicMemory, InteractionLog,
+    MemoryCorpus, MemoryDataAccess, MemoryFragment, MemoryQuery, MemoryType, MessageDirection,
+    SemanticMemory, SkillExpertise, StrategicInferentialMemory, TimeRange, UserStatistics,
 };

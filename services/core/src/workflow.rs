@@ -10,16 +10,14 @@ use anyhow::Result;
 use sentio_email::{EmailAddress, EmailBody, OutgoingMessage, SimpleSmtpClient, SmtpClient};
 use sentio_llm::{DeepSeekClient, LlmClient, LlmRequest};
 use serde_json::json;
-use shared_logic::{
-    get_config, CommunicationStrategy, CoreProfile, InteractionLog, MemoryCorpus, MemoryDataAccess,
-    MessageDirection,
-};
+use shared_logic::{get_config, InteractionLog, MemoryCorpus, MemoryDataAccess, MessageDirection};
 use std::collections::HashMap;
 use tracing::{debug, info, warn};
 
 /// 邮件处理工作流程
 pub struct EmailWorkflow {
     llm_client: DeepSeekClient,
+    #[allow(dead_code)]
     email_client: SimpleSmtpClient,
 }
 
@@ -88,6 +86,7 @@ impl EmailWorkflow {
     }
 
     /// 发送邮件回复
+    #[allow(dead_code)]
     pub async fn send_email_reply(
         &self,
         to_email: &str,

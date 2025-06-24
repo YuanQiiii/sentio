@@ -35,4 +35,4 @@
 pub mod workflow;
 
 // 重新导出核心功能
-pub use workflow::{EmailWorkflow, demonstrate_workflow};
+pub use workflow::{demonstrate_workflow, EmailWorkflow};

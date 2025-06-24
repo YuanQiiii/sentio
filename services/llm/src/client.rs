@@ -149,7 +149,7 @@ impl LlmClient for DeepSeekClient {
         );
 
         // 3. 执行请求（包含重试逻辑）
-        let mut attempt = 0;
+        let mut attempt: u32 = 0;
         let max_retries = self.config.max_retries;
 
         // 构建完整的 API 端点 URL
@@ -214,7 +214,7 @@ impl LlmClient for DeepSeekClient {
                     );
                 }
             }
-            tokio::time::sleep(Duration::from_secs(2u64.pow(attempt as u32 - 1))).await;
+            tokio::time::sleep(Duration::from_secs(2u64.pow(attempt - 1))).await;
         };
 
         // 4. 解析响应
