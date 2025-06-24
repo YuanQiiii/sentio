@@ -5,6 +5,10 @@ use shared_logic::{
 };
 use std::collections::HashMap;
 
+// 导入本地模块
+mod workflow;
+use workflow::demonstrate_workflow;
+
 #[tokio::main]
 async fn main() -> Result<()> {
     eprintln!("🚀 程序开始启动...");
@@ -69,6 +73,14 @@ async fn main() -> Result<()> {
         tracing::warn!(
             error = %e,
             "Memory service demonstration failed (this is expected if MongoDB is not configured)"
+        );
+    }
+
+    // 演示完整的邮件工作流程
+    if let Err(e) = demonstrate_workflow().await {
+        tracing::warn!(
+            error = %e,
+            "Workflow demonstration failed (this is expected if services are not fully configured)"
         );
     }
 

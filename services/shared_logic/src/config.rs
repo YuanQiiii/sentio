@@ -44,6 +44,7 @@ pub struct Config {
     /// 服务器配置
     pub server: ServerConfig,
     /// LLM 提示词配置
+    #[serde(default)]
     pub prompts: PromptsConfig,
 }
 
@@ -94,9 +95,9 @@ pub struct LlmConfig {
 }
 
 /// LLM 提示词配置
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PromptsConfig {
-    #[serde(flatten)]
+    #[serde(flatten, default)]
     pub prompts: HashMap<String, HashMap<String, Prompt>>,
 }
 
@@ -365,10 +366,11 @@ mod tests {
         writeln!(
             file,
             r#"
-email_analysis:
-  summarize_thread:
-    system: "Summarize the email."
-    user: "Content: {{email_content}}"
+prompts:
+  email_analysis:
+    summarize_thread:
+      system: "Summarize the email."
+      user: "Content: {{email_content}}"
 "#
         )
         .unwrap();
