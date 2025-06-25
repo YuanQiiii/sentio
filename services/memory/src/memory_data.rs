@@ -67,9 +67,14 @@ impl MemoryRepository for MemoryDataRepository {
         }
     }
 
-    async fn save_interaction(&self, user_id: &str, interaction: &InteractionLog) -> MemoryResult<()> {
+    async fn save_interaction(
+        &self,
+        user_id: &str,
+        interaction: &InteractionLog,
+    ) -> MemoryResult<()> {
         let mut store = self.interactions.write().await;
-        store.entry(user_id.to_string())
+        store
+            .entry(user_id.to_string())
             .or_default()
             .push(interaction.clone());
         Ok(())
@@ -78,15 +83,18 @@ impl MemoryRepository for MemoryDataRepository {
     async fn search_memories(&self, query: &MemoryQuery) -> MemoryResult<Vec<MemoryFragment>> {
         let store = self.memory_fragments.read().await;
         let mut results = Vec::new();
-        
+
         if let Some(user_id) = &query.user_id {
             if let Some(fragments) = store.get(user_id) {
-                results.extend(fragments.iter().filter(|f| {
-                    f.content.contains(&query.query_text)
-                }).cloned());
+                results.extend(
+                    fragments
+                        .iter()
+                        .filter(|f| f.content.contains(&query.query_text))
+                        .cloned(),
+                );
             }
         }
-        
+
         Ok(results)
     }
 
@@ -107,22 +115,22 @@ impl MemoryRepository for MemoryDataRepository {
         let _corpus_store = self.memory_corpus.read().await;
         let interaction_store = self.interactions.read().await;
         let fragment_store = self.memory_fragments.read().await;
-        
+
         let total_interactions = interaction_store.get(user_id).map_or(0, |v| v.len()) as u64;
         let total_memories = fragment_store.get(user_id).map_or(0, |v| v.len()) as u64;
-        
+
         let first_interaction = interaction_store
             .get(user_id)
             .and_then(|v| v.last())
             .map(|i| i.timestamp)
             .unwrap_or_else(Utc::now);
-            
+
         let last_interaction = interaction_store
             .get(user_id)
             .and_then(|v| v.first())
             .map(|i| i.timestamp)
             .unwrap_or_else(Utc::now);
-        
+
         Ok(UserStatistics {
             user_id: user_id.to_string(),
             total_interactions,
@@ -137,11 +145,11 @@ impl MemoryRepository for MemoryDataRepository {
         let mut corpus_store = self.memory_corpus.write().await;
         let mut interaction_store = self.interactions.write().await;
         let mut fragment_store = self.memory_fragments.write().await;
-        
+
         corpus_store.remove(user_id);
         interaction_store.remove(user_id);
         fragment_store.remove(user_id);
-        
+
         Ok(())
     }
 

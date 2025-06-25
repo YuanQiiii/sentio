@@ -61,7 +61,6 @@ fn test_memory_corpus_creation() {
     assert_eq!(corpus.episodic_memory.interaction_log.len(), 0);
 }
 
-
 #[test]
 fn test_message_direction_serialization() {
     // 测试 Inbound 序列化

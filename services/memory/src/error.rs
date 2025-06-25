@@ -20,7 +20,6 @@ pub enum MemoryError {
     #[error("Document not found: {document_type} with id {id}")]
     DocumentNotFound { document_type: String, id: String },
 
-
     /// 配置错误
     #[error("Configuration error: {field}")]
     ConfigurationError { field: String },
