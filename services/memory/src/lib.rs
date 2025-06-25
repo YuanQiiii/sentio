@@ -19,7 +19,6 @@
 // 模块声明
 pub mod error;
 pub mod memory_data;
-pub mod memory_repository;
 pub mod models;
 pub mod repository;
 
@@ -42,4 +41,3 @@ pub use repository::{
 
 // 导出内存存储实现
 pub use memory_data::MemoryDataRepository;
-pub use memory_repository::MemoryRepositoryImpl;
