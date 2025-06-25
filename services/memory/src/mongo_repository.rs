@@ -47,8 +47,6 @@ impl MongoMemoryRepository {
 
         info!(
             database_url = %db_config.url,
-            database_name = %database_name,
-            auth_user = %url::Url::parse(&db_config.url).ok().and_then(|u| u.username().is_empty().then(|| None).unwrap_or(Some(u.username().to_string()))).unwrap_or_else(|| "(none)".to_string()),
             max_connections = db_config.max_connections,
             timeout = db_config.connect_timeout,
             "Initializing MongoDB memory repository"
@@ -530,8 +528,6 @@ impl MongoMemoryRepository {
     }
 
     /// 获取或创建用户记忆体的辅助方法
-    ///
-    /// 若用户不存在则自动初始化一份空记忆体
     async fn get_or_create_corpus(&self, user_id: &str) -> MemoryResult<MemoryCorpus> {
         match self.get_memory_corpus(user_id).await? {
             Some(corpus) => Ok(corpus),
@@ -972,10 +968,36 @@ impl MemoryRepository for MongoMemoryRepository {
         Ok(())
     }
 
-    /// 确保所有必要的索引存在（幂等，失败仅警告）
-    ///
-    /// - 仅提升性能，不影响主流程健壮性
-    /// - 推荐在服务启动时调用
+    async fn health_check(&self) -> MemoryResult<bool> {
+        debug!("Performing memory repository health check");
+
+        self.execute_with_retry(
+            || {
+                Box::pin(async {
+                    // 测试数据库连接
+                    self.database
+                        .run_command(doc! { "ping": 1 }, None)
+                        .await
+                        .map_err(|e| MemoryError::DatabaseConnectionFailed {
+                            message: format!("Health check ping failed: {}", e),
+                        })?;
+
+                    // 尝试测试集合访问，如果失败则发出警告但不终止
+                    match self.memory_corpus_collection
+                        .find_one(doc! {}, None)
+                        .await {
+                        Ok(_) => debug!("Collection access test successful"),
+                        Err(e) => warn!("Collection access test failed: {}. This may indicate permission issues but core functionality should still work.", e),
+                    }
+
+                    Ok(true)
+                })
+            },
+            "health_check",
+        )
+        .await
+    }
+
     async fn ensure_indexes(&self) -> MemoryResult<()> {
         info!("Creating database indexes for optimal performance");
 
@@ -1045,38 +1067,5 @@ impl MemoryRepository for MongoMemoryRepository {
 
         info!("Index creation process completed");
         Ok(())
-    }
-
-    /// 健康检查：测试数据库连接和集合访问权限
-    ///
-    /// 返回 true 表示连接和基本操作正常，false 或错误表示异常
-    async fn health_check(&self) -> MemoryResult<bool> {
-        debug!("Performing memory repository health check");
-
-        self.execute_with_retry(
-            || {
-                Box::pin(async {
-                    // 测试数据库连接
-                    self.database
-                        .run_command(doc! { "ping": 1 }, None)
-                        .await
-                        .map_err(|e| MemoryError::DatabaseConnectionFailed {
-                            message: format!("Health check ping failed: {}", e),
-                        })?;
-
-                    // 尝试测试集合访问，如果失败则发出警告但不终止
-                    match self.memory_corpus_collection
-                        .find_one(doc! {}, None)
-                        .await {
-                        Ok(_) => debug!("Collection access test successful"),
-                        Err(e) => warn!("Collection access test failed: {}. This may indicate permission issues but core functionality should still work.", e),
-                    }
-
-                    Ok(true)
-                })
-            },
-            "health_check",
-        )
-        .await
     }
 }
