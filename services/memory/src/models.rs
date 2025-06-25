@@ -317,6 +317,14 @@ pub struct SelfReflectionEntry {
     pub related_interaction: Option<String>,
 }
 
+impl Default for EpisodicMemory {
+    fn default() -> Self {
+        Self {
+            interaction_log: Vec::new(),
+        }
+    }
+}
+
 impl Default for MemoryCorpus {
     fn default() -> Self {
         let now = chrono::Utc::now();
@@ -370,6 +378,24 @@ impl Default for StrategicInferentialMemory {
                 user_communication_preferences: HashMap::new(),
             },
             self_reflection_log: Vec::new(),
+        }
+    }
+}
+
+impl MemoryCorpus {
+    /// 创建新的用户记忆体
+    pub fn new(user_id: String) -> Self {
+        let now = chrono::Utc::now();
+        Self {
+            user_id,
+            version: "1.0".to_string(),
+            created_at: now,
+            updated_at: now,
+            core_profile: CoreProfile::default(),
+            episodic_memory: EpisodicMemory::default(),
+            semantic_memory: SemanticMemory::default(),
+            action_state_memory: ActionStateMemory::default(),
+            strategic_inferential_memory: StrategicInferentialMemory::default(),
         }
     }
 }

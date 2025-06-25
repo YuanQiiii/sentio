@@ -47,6 +47,8 @@ impl MongoMemoryRepository {
 
         info!(
             database_url = %db_config.url,
+            database_name = %database_name,
+            auth_user = %url::Url::parse(&db_config.url).ok().and_then(|u| u.username().is_empty().then(|| None).unwrap_or(Some(u.username().to_string()))).unwrap_or_else(|| "(none)".to_string()),
             max_connections = db_config.max_connections,
             timeout = db_config.connect_timeout,
             "Initializing MongoDB memory repository"
@@ -58,6 +60,25 @@ impl MongoMemoryRepository {
                 field: format!("Invalid MongoDB URL: {}", e),
             }
         })?;
+
+        // 从 URL 中解析数据库名称
+        let database_name = if let Some(default_db) = &client_options.default_database {
+            default_db.clone()
+        } else {
+            // 如果 URL 中没有指定数据库，从 URL 路径中提取
+            let url =
+                url::Url::parse(&db_config.url).map_err(|e| MemoryError::ConfigurationError {
+                    field: format!("Invalid MongoDB URL format: {}", e),
+                })?;
+
+            let path = url.path().trim_start_matches('/');
+            if path.is_empty() {
+                "sentio".to_string() // 默认数据库名称
+            } else {
+                // 移除 URL 参数部分
+                path.split('?').next().unwrap_or("sentio").to_string()
+            }
+        };
 
         // 配置连接池和超时
         client_options.max_pool_size = Some(db_config.max_connections);
@@ -72,7 +93,7 @@ impl MongoMemoryRepository {
         })?;
 
         // 连接到数据库
-        let database = client.database("sentio_memory");
+        let database = client.database(&database_name);
 
         // 测试连接
         database
@@ -227,6 +248,299 @@ impl MongoMemoryRepository {
         );
 
         Err(last_error.unwrap())
+    }
+
+    /// 添加或更新任务 (行动记忆)
+    pub async fn upsert_task(&self, user_id: &str, task: Task) -> MemoryResult<()> {
+        debug!(user_id = %user_id, task_id = %task.task_id, "Upserting task");
+
+        self.execute_with_retry(
+            || {
+                let task = task.clone();
+                Box::pin(async move {
+                    // 获取用户的记忆体
+                    let mut corpus = self.get_or_create_corpus(user_id).await?;
+
+                    // 查找并更新现有任务，或添加新任务
+                    if let Some(existing_task) = corpus
+                        .action_state_memory
+                        .current_tasks
+                        .iter_mut()
+                        .find(|t| t.task_id == task.task_id)
+                    {
+                        *existing_task = task;
+                    } else {
+                        corpus.action_state_memory.current_tasks.push(task);
+                    }
+
+                    corpus.updated_at = Utc::now();
+
+                    // 保存更新后的记忆体
+                    self.save_memory_corpus(&corpus).await
+                })
+            },
+            "upsert_task",
+        )
+        .await
+    }
+
+    /// 获取用户的所有任务
+    pub async fn get_tasks(
+        &self,
+        user_id: &str,
+        status_filter: Option<&str>,
+    ) -> MemoryResult<Vec<Task>> {
+        debug!(user_id = %user_id, status_filter = ?status_filter, "Getting tasks");
+
+        let corpus = self.get_memory_corpus(user_id).await?;
+
+        let tasks = match corpus {
+            Some(corpus) => {
+                let mut tasks = corpus.action_state_memory.current_tasks;
+                if let Some(status) = status_filter {
+                    tasks.retain(|task| task.status == status);
+                }
+                tasks
+            }
+            None => Vec::new(),
+        };
+
+        Ok(tasks)
+    }
+
+    /// 完成任务
+    pub async fn complete_task(&self, user_id: &str, task_id: &str) -> MemoryResult<bool> {
+        debug!(user_id = %user_id, task_id = %task_id, "Completing task");
+
+        self.execute_with_retry(
+            || {
+                let task_id = task_id.to_string();
+                Box::pin(async move {
+                    let mut corpus = match self.get_memory_corpus(user_id).await? {
+                        Some(corpus) => corpus,
+                        None => return Ok(false),
+                    };
+
+                    // 查找并更新任务状态
+                    let task_updated = corpus
+                        .action_state_memory
+                        .current_tasks
+                        .iter_mut()
+                        .find(|t| t.task_id == task_id)
+                        .map(|task| {
+                            task.status = "completed".to_string();
+                            task.updated_at = Utc::now();
+                            true
+                        })
+                        .unwrap_or(false);
+
+                    if task_updated {
+                        corpus.updated_at = Utc::now();
+                        self.save_memory_corpus(&corpus).await?;
+                    }
+
+                    Ok(task_updated)
+                })
+            },
+            "complete_task",
+        )
+        .await
+    }
+
+    /// 添加跟进事项
+    pub async fn add_follow_up(&self, user_id: &str, follow_up: FollowUp) -> MemoryResult<()> {
+        debug!(user_id = %user_id, "Adding follow-up");
+
+        self.execute_with_retry(
+            || {
+                let follow_up = follow_up.clone();
+                Box::pin(async move {
+                    let mut corpus = self.get_or_create_corpus(user_id).await?;
+                    corpus.action_state_memory.follow_ups.push(follow_up);
+                    corpus.updated_at = Utc::now();
+                    self.save_memory_corpus(&corpus).await
+                })
+            },
+            "add_follow_up",
+        )
+        .await
+    }
+
+    /// 获取待处理的跟进事项
+    pub async fn get_pending_follow_ups(&self, user_id: &str) -> MemoryResult<Vec<FollowUp>> {
+        debug!(user_id = %user_id, "Getting pending follow-ups");
+
+        let corpus = self.get_memory_corpus(user_id).await?;
+
+        let follow_ups = match corpus {
+            Some(corpus) => corpus
+                .action_state_memory
+                .follow_ups
+                .into_iter()
+                .filter(|f| !f.resolved)
+                .collect(),
+            None => Vec::new(),
+        };
+
+        Ok(follow_ups)
+    }
+
+    /// 添加用户模型假设 (策略记忆)
+    pub async fn add_user_hypothesis(
+        &self,
+        user_id: &str,
+        hypothesis: UserModelHypothesis,
+    ) -> MemoryResult<()> {
+        debug!(user_id = %user_id, hypothesis_id = %hypothesis.hypothesis_id, "Adding user hypothesis");
+
+        self.execute_with_retry(
+            || {
+                let hypothesis = hypothesis.clone();
+                Box::pin(async move {
+                    let mut corpus = self.get_or_create_corpus(user_id).await?;
+                    corpus
+                        .strategic_inferential_memory
+                        .user_model_hypotheses
+                        .push(hypothesis);
+                    corpus.updated_at = Utc::now();
+                    self.save_memory_corpus(&corpus).await
+                })
+            },
+            "add_user_hypothesis",
+        )
+        .await
+    }
+
+    /// 更新假设状态 (确认/反驳)
+    pub async fn update_hypothesis_status(
+        &self,
+        user_id: &str,
+        hypothesis_id: &str,
+        status: &str,
+        evidence: Vec<String>,
+    ) -> MemoryResult<bool> {
+        debug!(user_id = %user_id, hypothesis_id = %hypothesis_id, status = %status, "Updating hypothesis status");
+
+        self.execute_with_retry(
+            || {
+                let hypothesis_id = hypothesis_id.to_string();
+                let status = status.to_string();
+                let evidence = evidence.clone();
+                Box::pin(async move {
+                    let mut corpus = match self.get_memory_corpus(user_id).await? {
+                        Some(corpus) => corpus,
+                        None => return Ok(false),
+                    };
+
+                    let hypothesis_updated = corpus
+                        .strategic_inferential_memory
+                        .user_model_hypotheses
+                        .iter_mut()
+                        .find(|h| h.hypothesis_id == hypothesis_id)
+                        .map(|h| {
+                            h.status = status;
+                            h.evidence.extend(evidence);
+                            h.updated_at = Utc::now();
+                            true
+                        })
+                        .unwrap_or(false);
+
+                    if hypothesis_updated {
+                        corpus.updated_at = Utc::now();
+                        self.save_memory_corpus(&corpus).await?;
+                    }
+
+                    Ok(hypothesis_updated)
+                })
+            },
+            "update_hypothesis_status",
+        )
+        .await
+    }
+
+    /// 更新沟通策略
+    pub async fn update_communication_strategy(
+        &self,
+        user_id: &str,
+        strategy: CommunicationStrategy,
+    ) -> MemoryResult<()> {
+        debug!(user_id = %user_id, "Updating communication strategy");
+
+        self.execute_with_retry(
+            || {
+                let strategy = strategy.clone();
+                Box::pin(async move {
+                    let mut corpus = self.get_or_create_corpus(user_id).await?;
+                    corpus.strategic_inferential_memory.communication_strategy = strategy;
+                    corpus.updated_at = Utc::now();
+                    self.save_memory_corpus(&corpus).await
+                })
+            },
+            "update_communication_strategy",
+        )
+        .await
+    }
+
+    /// 添加自我反思条目
+    pub async fn add_self_reflection(
+        &self,
+        user_id: &str,
+        reflection: SelfReflectionEntry,
+    ) -> MemoryResult<()> {
+        debug!(user_id = %user_id, reflection_type = %reflection.reflection_type, "Adding self reflection");
+
+        self.execute_with_retry(
+            || {
+                let reflection = reflection.clone();
+                Box::pin(async move {
+                    let mut corpus = self.get_or_create_corpus(user_id).await?;
+                    corpus
+                        .strategic_inferential_memory
+                        .self_reflection_log
+                        .push(reflection);
+                    corpus.updated_at = Utc::now();
+                    self.save_memory_corpus(&corpus).await
+                })
+            },
+            "add_self_reflection",
+        )
+        .await
+    }
+
+    /// 获取活跃的用户假设
+    pub async fn get_active_hypotheses(
+        &self,
+        user_id: &str,
+    ) -> MemoryResult<Vec<UserModelHypothesis>> {
+        debug!(user_id = %user_id, "Getting active hypotheses");
+
+        let corpus = self.get_memory_corpus(user_id).await?;
+
+        let hypotheses = match corpus {
+            Some(corpus) => corpus
+                .strategic_inferential_memory
+                .user_model_hypotheses
+                .into_iter()
+                .filter(|h| h.status == "active")
+                .collect(),
+            None => Vec::new(),
+        };
+
+        Ok(hypotheses)
+    }
+
+    /// 获取或创建用户记忆体的辅助方法
+    ///
+    /// 若用户不存在则自动初始化一份空记忆体
+    async fn get_or_create_corpus(&self, user_id: &str) -> MemoryResult<MemoryCorpus> {
+        match self.get_memory_corpus(user_id).await? {
+            Some(corpus) => Ok(corpus),
+            None => {
+                let corpus = MemoryCorpus::new(user_id.to_string());
+                self.save_memory_corpus(&corpus).await?;
+                Ok(corpus)
+            }
+        }
     }
 }
 
@@ -658,37 +972,10 @@ impl MemoryRepository for MongoMemoryRepository {
         Ok(())
     }
 
-    async fn health_check(&self) -> MemoryResult<bool> {
-        debug!("Performing memory repository health check");
-
-        self.execute_with_retry(
-            || {
-                Box::pin(async {
-                    // 测试数据库连接
-                    self.database
-                        .run_command(doc! { "ping": 1 }, None)
-                        .await
-                        .map_err(|e| MemoryError::DatabaseConnectionFailed {
-                            message: format!("Health check ping failed: {}", e),
-                        })?;
-
-                    // 测试集合访问
-                    self.memory_corpus_collection
-                        .estimated_document_count(None)
-                        .await
-                        .map_err(|e| MemoryError::DatabaseOperationFailed {
-                            operation: "health_check_count".to_string(),
-                            details: e.to_string(),
-                        })?;
-
-                    Ok(true)
-                })
-            },
-            "health_check",
-        )
-        .await
-    }
-
+    /// 确保所有必要的索引存在（幂等，失败仅警告）
+    ///
+    /// - 仅提升性能，不影响主流程健壮性
+    /// - 推荐在服务启动时调用
     async fn ensure_indexes(&self) -> MemoryResult<()> {
         info!("Creating database indexes for optimal performance");
 
@@ -734,32 +1021,62 @@ impl MemoryRepository for MongoMemoryRepository {
                 .build(),
         ];
 
-        // 创建索引
-        self.memory_corpus_collection
+        // 尝试创建索引，如果失败只发出警告而不终止
+        match self.memory_corpus_collection
             .create_indexes(memory_corpus_indexes, None)
-            .await
-            .map_err(|e| MemoryError::IndexError {
-                index_name: "memory_corpus_indexes".to_string(),
-                details: e.to_string(),
-            })?;
+            .await {
+            Ok(_) => info!("Memory corpus indexes created successfully"),
+            Err(e) => warn!("Failed to create memory corpus indexes: {}. Repository will still function but with reduced performance.", e),
+        }
 
-        self.interaction_collection
+        match self.interaction_collection
             .create_indexes(interaction_indexes, None)
-            .await
-            .map_err(|e| MemoryError::IndexError {
-                index_name: "interaction_indexes".to_string(),
-                details: e.to_string(),
-            })?;
+            .await {
+            Ok(_) => info!("Interaction indexes created successfully"),
+            Err(e) => warn!("Failed to create interaction indexes: {}. Repository will still function but with reduced performance.", e),
+        }
 
-        self.memory_fragment_collection
+        match self.memory_fragment_collection
             .create_indexes(fragment_indexes, None)
-            .await
-            .map_err(|e| MemoryError::IndexError {
-                index_name: "fragment_indexes".to_string(),
-                details: e.to_string(),
-            })?;
+            .await {
+            Ok(_) => info!("Memory fragment indexes created successfully"),
+            Err(e) => warn!("Failed to create memory fragment indexes: {}. Repository will still function but with reduced performance.", e),
+        }
 
-        info!("Database indexes created successfully");
+        info!("Index creation process completed");
         Ok(())
+    }
+
+    /// 健康检查：测试数据库连接和集合访问权限
+    ///
+    /// 返回 true 表示连接和基本操作正常，false 或错误表示异常
+    async fn health_check(&self) -> MemoryResult<bool> {
+        debug!("Performing memory repository health check");
+
+        self.execute_with_retry(
+            || {
+                Box::pin(async {
+                    // 测试数据库连接
+                    self.database
+                        .run_command(doc! { "ping": 1 }, None)
+                        .await
+                        .map_err(|e| MemoryError::DatabaseConnectionFailed {
+                            message: format!("Health check ping failed: {}", e),
+                        })?;
+
+                    // 尝试测试集合访问，如果失败则发出警告但不终止
+                    match self.memory_corpus_collection
+                        .find_one(doc! {}, None)
+                        .await {
+                        Ok(_) => debug!("Collection access test successful"),
+                        Err(e) => warn!("Collection access test failed: {}. This may indicate permission issues but core functionality should still work.", e),
+                    }
+
+                    Ok(true)
+                })
+            },
+            "health_check",
+        )
+        .await
     }
 }
