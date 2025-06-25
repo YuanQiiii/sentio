@@ -54,16 +54,16 @@ workers = 4
 
 ### 环境变量覆盖
 
-使用 `SENTIO_` 前缀，嵌套字段用双下划线 `__` 分隔：
+使用 `SENTIO_` 前缀，嵌套字段用双下划线 `_` 分隔：
 
 ```bash
 # LLM 配置
-SENTIO_LLM__API_KEY=sk-your-production-key
-SENTIO_LLM__MODEL=deepseek-chat-v2
+SENTIO_LLM_API_KEY=sk-your-production-key
+SENTIO_LLM_MODEL=deepseek-chat-v2
 
 # 遥测配置
-SENTIO_TELEMETRY__LOG_LEVEL=debug
-SENTIO_TELEMETRY__JSON_FORMAT=true
+SENTIO_TELEMETRY_LOG_LEVEL=debug
+SENTIO_TELEMETRY_JSON_FORMAT=true
 ```
 
 ## 使用示例

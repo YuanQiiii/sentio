@@ -1,7 +1,7 @@
 use anyhow::Result;
 use sentio_llm::{DeepSeekClient, LlmClient, LlmRequest};
 use shared_logic::{
-    config, initialize_database, InteractionLog, MemoryDataAccess, MessageDirection,
+    config, InteractionLog, MemoryDataAccess, MessageDirection,
 };
 use std::collections::HashMap;
 
@@ -22,13 +22,6 @@ async fn main() -> Result<()> {
     config::initialize_config().await?;
     eprintln!("✅ 配置初始化完成");
 
-    // 第二步：初始化全局数据库连接
-    if let Err(e) = initialize_database().await {
-        tracing::warn!(
-            error = %e,
-            "Database initialization failed (this is expected if MongoDB is not configured)"
-        );
-    }
 
     // 第三步：基于配置初始化遥测系统
     let global_config = config::get_config();
@@ -37,7 +30,6 @@ async fn main() -> Result<()> {
     // 第三步：打印启动日志
     tracing::info!(
         log_level = ?global_config.telemetry.log_level,
-        database_url = %global_config.database.url,
         llm_provider = %global_config.llm.provider,
         server_host = %global_config.server.host,
         server_port = %global_config.server.port,
@@ -72,7 +64,7 @@ async fn main() -> Result<()> {
     if let Err(e) = demonstrate_memory_integration().await {
         tracing::warn!(
             error = %e,
-            "Memory service demonstration failed (this is expected if MongoDB is not configured)"
+            "Memory service demonstration failed"
         );
     }
 
@@ -93,8 +85,8 @@ async fn main() -> Result<()> {
 fn demonstrate_global_config_access() {
     let config = config::get_config();
     tracing::info!(
-        "Demonstrating global config access - Database max connections: {}",
-        config.database.max_connections
+        "Demonstrating global config access - Server workers: {}",
+        config.server.workers
     );
 
     // 演示访问提示词配置
@@ -146,14 +138,7 @@ async fn demonstrate_llm_integration() -> Result<()> {
 async fn demonstrate_memory_integration() -> Result<()> {
     tracing::info!("Testing memory service with unified data access...");
 
-    // 首先检查数据库连接健康状态
-    // 如果数据库没有初始化，这里会直接返回错误而不是 panic
-    if let Err(e) = shared_logic::get_database_stats().await {
-        tracing::warn!(error = %e, "Database not available, skipping memory service demonstration");
-        return Err(e.into());
-    }
-
-    tracing::info!("Database connection is healthy");
+    tracing::info!("Memory service demonstration starting");
 
     // 创建示例交互记录
     use chrono::Utc;

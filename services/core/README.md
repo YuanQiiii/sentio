@@ -184,14 +184,14 @@ tracing::info!(
 
 ```bash
 # 数据库配置
-export SENTIO_DATABASE__URL="mongodb://prod-server:27017/sentio"
+export SENTIO_DATABASE_URL="mongodb://prod-server:27017/sentio"
 
 # 日志配置
-export SENTIO_TELEMETRY__LOG_LEVEL="info"
-export SENTIO_TELEMETRY__JSON_FORMAT="true"
+export SENTIO_TELEMETRY_LOG_LEVEL="info"
+export SENTIO_TELEMETRY_JSON_FORMAT="true"
 
 # LLM 配置
-export SENTIO_LLM__API_KEY="your-production-api-key"
+export SENTIO_LLM_API_KEY="your-production-api-key"
 ```
 
 ### Docker 运行

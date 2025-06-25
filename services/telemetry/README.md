@@ -56,10 +56,6 @@ info!(
     "User logged in successfully"
 );
 
-// 带变量的日志
-let database_url = "mongodb://localhost:27017";
-debug!(url = %database_url, "Connecting to database");
-
 // 错误日志
 if let Err(e) = some_operation() {
     error!(error = %e, "Operation failed");
@@ -110,13 +106,13 @@ pub struct TelemetryConfig {
 
 ```bash
 # 设置日志级别
-export SENTIO_TELEMETRY__LOG_LEVEL=debug
+export SENTIO_TELEMETRY_LOG_LEVEL=debug
 
 # 启用 JSON 格式输出
-export SENTIO_TELEMETRY__JSON_FORMAT=true
+export SENTIO_TELEMETRY_JSON_FORMAT=true
 
 # 禁用控制台输出
-export SENTIO_TELEMETRY__CONSOLE=false
+export SENTIO_TELEMETRY_CONSOLE=false
 ```
 
 ## 输出格式
@@ -124,7 +120,7 @@ export SENTIO_TELEMETRY__CONSOLE=false
 ### 人类可读格式（默认）
 
 ```
-2025-06-22T12:34:56.789Z  INFO sentio_core: services/core/src/main.rs:15: Configuration loaded successfully log_level=Debug database_url=mongodb://localhost:27017/sentio
+2025-06-22T12:34:56.789Z  INFO sentio_core: services/core/src/main.rs:15: Configuration loaded successfully
 ```
 
 ### JSON 格式
@@ -139,7 +135,6 @@ export SENTIO_TELEMETRY__CONSOLE=false
   "fields": {
     "message": "Configuration loaded successfully",
     "log_level": "Debug",
-    "database_url": "mongodb://localhost:27017/sentio"
   },
   "file": "services/core/src/main.rs",
   "line": 15

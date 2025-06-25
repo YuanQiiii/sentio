@@ -9,7 +9,33 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::database::get_db;
+// In-memory database for development/testing
+use std::sync::Arc;
+use tokio::sync::RwLock;
+
+lazy_static::lazy_static! {
+    static ref IN_MEMORY_DB: Arc<RwLock<InMemoryDb>> = Arc::new(RwLock::new(InMemoryDb::default()));
+}
+
+#[derive(Default)]
+struct InMemoryDb {
+    memory_corpus: Vec<MemoryCorpus>,
+    memory_fragments: Vec<MemoryFragment>,
+    interaction_logs: Vec<InteractionLog>,
+    metrics: DbMetrics,
+}
+
+#[derive(Default)]
+struct DbMetrics {
+    reads: u64,
+    writes: u64,
+    query_hits: u64,
+    query_misses: u64,
+}
+
+fn get_db() -> Arc<RwLock<InMemoryDb>> {
+    IN_MEMORY_DB.clone()
+}
 
 /// 记忆类型枚举
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]

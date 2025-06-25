@@ -129,25 +129,23 @@ graph TD
 
 | 配置项 | 环境变量 | 默认值 | 说明 |
 |--------|----------|--------|------|
-| 数据库 URL | `SENTIO_DATABASE__URL` | `mongodb://localhost:27017/sentio` | MongoDB 连接 |
-| LLM API 密钥 | `SENTIO_LLM__API_KEY` | `your-api-key` | DeepSeek API 密钥 |
-| 日志级别 | `SENTIO_TELEMETRY__LOG_LEVEL` | `info` | 日志详细程度 |
+| LLM API 密钥 | `SENTIO_LLM_API_KEY` | `your-api-key` | DeepSeek API 密钥 |
+| 日志级别 | `SENTIO_TELEMETRY_LOG_LEVEL` | `info` | 日志详细程度 |
 | 提示词配置 | - | `config/prompts.yaml` | LLM 提示词模板 |
 
 #### 环境变量示例
 
 ```bash
 # .env 文件示例
-SENTIO_DATABASE__URL=mongodb://localhost:27017/sentio
-SENTIO_LLM__API_KEY=sk-your-deepseek-api-key
-SENTIO_LLM__MODEL=deepseek-chat
-SENTIO_TELEMETRY__LOG_LEVEL=debug
+SENTIO_LLM_API_KEY=sk-your-deepseek-api-key
+SENTIO_LLM_MODEL=deepseek-chat
+SENTIO_TELEMETRY_LOG_LEVEL=debug
 
 # SMTP 邮件配置
-SENTIO_EMAIL__SMTP__HOST=smtp.gmail.com
-SENTIO_EMAIL__SMTP__PORT=587
-SENTIO_EMAIL__SMTP__USERNAME=your-email@gmail.com
-SENTIO_EMAIL__SMTP__PASSWORD=your-app-password
+SENTIO_EMAIL_SMTP_HOST=smtp.gmail.com
+SENTIO_EMAIL_SMTP_PORT=587
+SENTIO_EMAIL_SMTP_USERNAME=your-email@gmail.com
+SENTIO_EMAIL_SMTP_PASSWORD=your-app-password
 ```
 
 ## 📚 功能特性
@@ -337,9 +335,9 @@ cargo doc --workspace --open
 3. **配置生产环境变量**:
 
    ```bash
-   export SENTIO_DATABASE__URL="mongodb://prod-host:27017/sentio"
-   export SENTIO_LLM__API_KEY="your-production-api-key"
-   export SENTIO_TELEMETRY__LOG_LEVEL="info"
+   export SENTIO_DATABASE_URL="mongodb://prod-host:27017/sentio"
+   export SENTIO_LLM_API_KEY="your-production-api-key"
+   export SENTIO_TELEMETRY_LOG_LEVEL="info"
    ```
 
 4. **启动服务**:

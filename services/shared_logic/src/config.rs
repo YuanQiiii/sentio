@@ -12,11 +12,11 @@
 //!
 //! ## 环境变量格式
 //!
-//! 使用 `SENTIO_` 前缀，嵌套字段用双下划线 `__` 分隔：
+//! 使用 `SENTIO_` 前缀，嵌套字段用双下划线 `_` 分隔：
 //!
 //! ```bash
-//! SENTIO_LLM__API_KEY=your-api-key
-//! SENTIO_TELEMETRY__LOG_LEVEL=debug
+//! SENTIO_LLM_API_KEY=your-api-key
+//! SENTIO_TELEMETRY_LOG_LEVEL=debug
 //! ```
 
 use anyhow::Result;
@@ -40,8 +40,6 @@ pub struct Config {
     pub telemetry: TelemetryConfig,
     /// 服务器配置
     pub server: ServerConfig,
-    /// 数据库配置
-    pub database: DatabaseConfig,
     /// LLM 提示词配置
     #[serde(default)]
     pub prompts: PromptsConfig,
@@ -111,13 +109,6 @@ pub struct TelemetryConfig {
     pub json_format: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DatabaseConfig {
-    /// 数据库连接URL
-    pub url: String,
-    /// 最大连接数
-    pub max_connections: u32,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
@@ -174,7 +165,6 @@ impl Config {
             .set_default("llm.timeout", 120)?
             .set_default("llm.max_retries", 3)?
             // 数据库默认配置
-            .set_default("database.url", "mongodb://localhost:27017")?
             .set_default("database.max_connections", 10)?
             // 遥测默认配置
             .set_default("telemetry.log_level", "info")?
@@ -259,10 +249,6 @@ impl Default for Config {
                 port: 8080,
                 workers: 4,
             },
-            database: DatabaseConfig {
-                url: "mongodb://localhost:27017".to_string(),
-                max_connections: 10,
-            },
             prompts: PromptsConfig {
                 prompts: HashMap::new(),
             },
@@ -290,8 +276,8 @@ pub fn load_config() -> Result<Config> {
                 .format(config::FileFormat::Yaml)
                 .required(false),
         )
-        // 4. 从环境变量加载 (SENTIO_DATABASE__URL)
-        .add_source(Environment::with_prefix("SENTIO").separator("__"));
+        // 4. 从环境变量加载 (SENTIO_DATABASE_URL)
+        .add_source(Environment::with_prefix("SENTIO").separator("_"));
 
     builder.build()?.try_deserialize().map_err(Into::into)
 }
@@ -317,7 +303,7 @@ pub fn load_config() -> Result<Config> {
 ///     config::initialize_config().await?;
 ///     
 ///     let config = config::get_config();
-///     println!("Database URL: {}", config.database.url);
+///     println!("Server host: {}", config.server.host);
 ///     
 ///     Ok(())
 /// }
@@ -404,8 +390,6 @@ prompts:
             .set_default("server.port", 8000)
             .unwrap()
             .set_default("server.workers", 1)
-            .unwrap()
-            .set_default("database.url", "mongodb://localhost:27017")
             .unwrap()
             .set_default("database.max_connections", 10)
             .unwrap()

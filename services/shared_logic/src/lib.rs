@@ -20,7 +20,7 @@
 //!     
 //!     // 在应用的任何地方访问配置
 //!     let config = config::get_config();
-//!     println!("Database URL: {}", config.database.url);
+//!     println!("Server port: {}", config.server.port);
 //!     
 //!     Ok(())
 //! }
@@ -41,8 +41,3 @@ pub use memory_data::{
     SemanticMemory, SkillExpertise, StrategicInferentialMemory, TimeRange, UserStatistics,
 };
 
-// 数据库相关功能
-pub mod database;
-
-// 重新导出数据库接口
-pub use database::{get_database_stats, initialize_database};

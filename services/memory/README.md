@@ -89,9 +89,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```bash
 # 环境变量
-SENTIO_DATABASE__URL=
-SENTIO_DATABASE__MAX_CONNECTIONS=10
-SENTIO_DATABASE__CONNECT_TIMEOUT=30
+SENTIO_DATABASE_URL=
+SENTIO_DATABASE_MAX_CONNECTIONS=10
+SENTIO_DATABASE_CONNECT_TIMEOUT=30
 ```
 
 ## 📊 数据模型详解
@@ -151,6 +151,7 @@ pub struct SemanticMemory {
 ### 添加新的记忆类型
 
 1. **定义数据结构**:
+
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewMemoryType {
@@ -161,6 +162,7 @@ pub struct NewMemoryType {
 ```
 
 2. **集成到主记忆体**:
+
 ```rust
 pub struct MemoryCorpus {
     // ... 现有字段
@@ -169,6 +171,7 @@ pub struct MemoryCorpus {
 ```
 
 3. **更新仓储接口**:
+
 ```rust
 #[async_trait]
 pub trait MemoryRepository {
@@ -227,21 +230,24 @@ cargo test --workspace
 ### 常见问题
 
 1. **连接超时**:
+
    ```bash
    # 检查 MongoDB 服务状态
    systemctl status mongod
    
    # 调整超时配置
-   SENTIO_DATABASE__CONNECT_TIMEOUT=60
+   SENTIO_DATABASE_CONNECT_TIMEOUT=60
    ```
 
 2. **内存使用过高**:
+
    ```rust
    // 限制查询结果数量
    let recent = repo.get_recent_interactions(user_id, 100).await?;
    ```
 
 3. **索引性能问题**:
+
    ```javascript
    // MongoDB shell 中检查索引
    db.interactions.getIndexes()

@@ -112,12 +112,12 @@ LLM 服务通过 `shared_logic` 模块获取全局配置。支持的配置项：
 
 ```bash
 # LLM 服务配置
-SENTIO_LLM__PROVIDER=deepseek           # LLM 提供商
-SENTIO_LLM__API_KEY=your-api-key        # API 密钥
-SENTIO_LLM__BASE_URL=https://api.deepseek.com  # API 基础 URL
-SENTIO_LLM__MODEL=deepseek-chat         # 默认模型
-SENTIO_LLM__TIMEOUT=120                 # 请求超时（秒）
-SENTIO_LLM__MAX_RETRIES=3               # 最大重试次数
+SENTIO_LLM_PROVIDER=deepseek           # LLM 提供商
+SENTIO_LLM_API_KEY=your-api-key        # API 密钥
+SENTIO_LLM_BASE_URL=https://api.deepseek.com  # API 基础 URL
+SENTIO_LLM_MODEL=deepseek-chat         # 默认模型
+SENTIO_LLM_TIMEOUT=120                 # 请求超时（秒）
+SENTIO_LLM_MAX_RETRIES=3               # 最大重试次数
 ```
 
 ### 配置文件
@@ -205,7 +205,7 @@ cargo test -p sentio_llm --doc
 
 ```bash
 # 需要设置真实的 API 密钥
-export SENTIO_LLM__API_KEY=your-test-api-key
+export SENTIO_LLM_API_KEY=your-test-api-key
 cargo test -p sentio_llm --test integration
 ```
 
