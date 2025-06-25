@@ -26,11 +26,6 @@ shared_logic 是 Sentio AI 邮件伙伴系统的共享逻辑服务，提供了�
 系统支持 TOML 格式的配置文件 (`Config.toml`)：
 
 ```toml
-[database]
-url = "mongodb://localhost:27017/sentio"
-max_connections = 10
-connect_timeout = 30
-
 [email.smtp]
 host = "smtp.gmail.com"
 port = 587
@@ -62,10 +57,6 @@ workers = 4
 使用 `SENTIO_` 前缀，嵌套字段用双下划线 `__` 分隔：
 
 ```bash
-# 数据库配置
-SENTIO_DATABASE__URL=mongodb://prod-server:27017/sentio
-SENTIO_DATABASE__MAX_CONNECTIONS=20
-
 # LLM 配置
 SENTIO_LLM__API_KEY=sk-your-production-key
 SENTIO_LLM__MODEL=deepseek-chat-v2

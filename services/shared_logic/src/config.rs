@@ -15,7 +15,6 @@
 //! 使用 `SENTIO_` 前缀，嵌套字段用双下划线 `__` 分隔：
 //!
 //! ```bash
-//! SENTIO_DATABASE__URL=mongodb://localhost:27017/sentio
 //! SENTIO_LLM__API_KEY=your-api-key
 //! SENTIO_TELEMETRY__LOG_LEVEL=debug
 //! ```
@@ -33,8 +32,6 @@ static GLOBAL_CONFIG: OnceLock<Config> = OnceLock::new();
 /// 系统配置结构
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    /// 数据库配置
-    pub database: DatabaseConfig,
     /// 邮件服务配置
     pub email: EmailConfig,
     /// LLM API配置
@@ -43,19 +40,11 @@ pub struct Config {
     pub telemetry: TelemetryConfig,
     /// 服务器配置
     pub server: ServerConfig,
+    /// 数据库配置
+    pub database: DatabaseConfig,
     /// LLM 提示词配置
     #[serde(default)]
     pub prompts: PromptsConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DatabaseConfig {
-    /// 数据库连接URL
-    pub url: String,
-    /// 连接池最大连接数
-    pub max_connections: u32,
-    /// 连接超时时间（秒）
-    pub connect_timeout: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,6 +112,14 @@ pub struct TelemetryConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DatabaseConfig {
+    /// 数据库连接URL
+    pub url: String,
+    /// 最大连接数
+    pub max_connections: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
     /// 服务器监听地址
     pub host: String,
@@ -158,10 +155,6 @@ impl Config {
     /// 从环境变量和配置文件加载配置
     pub fn from_env() -> Result<Self> {
         let mut settings = ConfigBuilder::builder()
-            // 首先设置默认值
-            .set_default("database.url", "mongodb://localhost:27017/sentio")?
-            .set_default("database.max_connections", 10)?
-            .set_default("database.connect_timeout", 30)?
             // 邮件默认配置
             .set_default("email.imap.host", "imap.gmail.com")?
             .set_default("email.imap.port", 993)?
@@ -180,6 +173,9 @@ impl Config {
             .set_default("llm.model", "deepseek-chat")?
             .set_default("llm.timeout", 120)?
             .set_default("llm.max_retries", 3)?
+            // 数据库默认配置
+            .set_default("database.url", "mongodb://localhost:27017")?
+            .set_default("database.max_connections", 10)?
             // 遥测默认配置
             .set_default("telemetry.log_level", "info")?
             .set_default("telemetry.console", true)?
@@ -235,11 +231,6 @@ impl Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            database: DatabaseConfig {
-                url: "mongodb://localhost:27017/sentio".to_string(),
-                max_connections: 10,
-                connect_timeout: 30,
-            },
             email: EmailConfig {
                 smtp: SmtpConfig {
                     host: "smtp.gmail.com".to_string(),
@@ -267,6 +258,10 @@ impl Default for Config {
                 host: "127.0.0.1".to_string(),
                 port: 8080,
                 workers: 4,
+            },
+            database: DatabaseConfig {
+                url: "mongodb://localhost:27017".to_string(),
+                max_connections: 10,
             },
             prompts: PromptsConfig {
                 prompts: HashMap::new(),
@@ -376,12 +371,6 @@ prompts:
         .unwrap();
 
         let builder = ConfigBuilder::builder()
-            .set_default("database.url", "test")
-            .unwrap()
-            .set_default("database.max_connections", 5)
-            .unwrap()
-            .set_default("database.connect_timeout", 5)
-            .unwrap()
             .set_default("email.smtp.host", "test")
             .unwrap()
             .set_default("email.smtp.port", 587)
@@ -415,6 +404,10 @@ prompts:
             .set_default("server.port", 8000)
             .unwrap()
             .set_default("server.workers", 1)
+            .unwrap()
+            .set_default("database.url", "mongodb://localhost:27017")
+            .unwrap()
+            .set_default("database.max_connections", 10)
             .unwrap()
             .add_source(config::File::from(prompts_path).format(config::FileFormat::Yaml));
 

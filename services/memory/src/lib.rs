@@ -4,7 +4,7 @@
 //!
 //! ## 核心功能
 //!
-//! - 记忆体的持久化存储(MongoDB)
+//! - 记忆体的持久化存储(内存存储)
 //! - 交互记录的完整追踪
 //! - 语义搜索和记忆检索
 //! - 用户数据的 GDPR 合规管理
@@ -19,8 +19,9 @@
 // 模块声明
 pub mod error;
 pub mod models;
-pub mod mongo_repository;
+pub mod memory_repository;
 pub mod repository;
+pub mod memory_data;
 
 // 导出错误类型
 pub use error::{MemoryError, MemoryResult};
@@ -39,5 +40,6 @@ pub use repository::{
     UserStatistics,
 };
 
-// 导出 MongoDB 实现
-pub use mongo_repository::MongoMemoryRepository;
+// 导出内存存储实现
+pub use memory_repository::MemoryRepositoryImpl;
+pub use memory_data::MemoryDataRepository;

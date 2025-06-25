@@ -89,7 +89,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```bash
 # 环境变量
-SENTIO_DATABASE__URL=mongodb://localhost:27017/sentio
+SENTIO_DATABASE__URL=
 SENTIO_DATABASE__MAX_CONNECTIONS=10
 SENTIO_DATABASE__CONNECT_TIMEOUT=30
 ```
@@ -251,7 +251,6 @@ cargo test --workspace
 
 - [技术设计文档](../../docs/TECHNICAL_DESIGN.md)
 - [项目主文档](../../README.md)
-- [MongoDB 官方文档](https://docs.mongodb.com/)
 
 ---
 

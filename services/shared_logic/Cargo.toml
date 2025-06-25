@@ -13,8 +13,6 @@ serde_json = "1.0"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
-mongodb = "2.8"
-bson = { version = "2.9", features = ["chrono-0_4"] }
 thiserror = "1.0"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 futures = "0.3"

@@ -1,7 +1,7 @@
 //! # 记忆仓储接口定义
 //!
 //! 定义记忆数据访问的核心接口，遵循"接口先行"设计原则。
-//! 这些接口将支持多种存储后端实现，目前专注于 MongoDB。
+//! 这些接口支持多种存储后端实现。
 
 use crate::error::MemoryResult;
 use crate::models::*;
@@ -170,11 +170,11 @@ pub trait MemoryRepository: Send + Sync {
     /// 这是一个不可逆操作，调用前需要额外验证
     async fn delete_user_data(&self, user_id: &str) -> MemoryResult<()>;
 
-    /// 健康检查 - 验证数据库连接和基本功能
+    /// 健康检查 - 验证存储连接和基本功能
     async fn health_check(&self) -> MemoryResult<bool>;
 
-    /// 创建必要的数据库索引（初始化时调用）
-    async fn ensure_indexes(&self) -> MemoryResult<()>;
+    /// 初始化存储（初始化时调用）
+    async fn initialize(&self) -> MemoryResult<()>;
 }
 
 /// 记忆仓储工厂接口
@@ -182,8 +182,8 @@ pub trait MemoryRepository: Send + Sync {
 /// 用于创建不同类型的记忆仓储实现
 #[async_trait]
 pub trait MemoryRepositoryFactory {
-    /// 创建 MongoDB 记忆仓储实例
-    async fn create_mongo_repository(&self) -> MemoryResult<Box<dyn MemoryRepository>>;
+    /// 创建内存存储实例
+    async fn create_memory_repository(&self) -> MemoryResult<Box<dyn MemoryRepository>>;
 }
 
 impl MemoryQuery {

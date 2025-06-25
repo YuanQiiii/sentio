@@ -27,7 +27,6 @@
 //! ```
 
 pub mod config;
-pub mod database;
 pub mod memory_data;
 pub mod types;
 
@@ -35,11 +34,6 @@ pub mod types;
 pub use config::{get_config, initialize_config, Config, Prompt, PromptsConfig};
 pub use types::*;
 
-// 重新导出数据库相关接口
-pub use database::{
-    check_database_health, get_collection, get_database, get_database_stats, initialize_database,
-    try_get_database, DatabaseError, DatabaseResult, DatabaseStats,
-};
 
 // 重新导出记忆数据访问接口
 pub use memory_data::{
@@ -47,3 +41,9 @@ pub use memory_data::{
     MemoryCorpus, MemoryDataAccess, MemoryFragment, MemoryQuery, MemoryType, MessageDirection,
     SemanticMemory, SkillExpertise, StrategicInferentialMemory, TimeRange, UserStatistics,
 };
+
+// 数据库相关功能
+pub mod database;
+
+// 重新导出数据库接口
+pub use database::{get_database_stats, initialize_database};

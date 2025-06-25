@@ -20,26 +20,6 @@ pub enum MemoryError {
     #[error("Document not found: {document_type} with id {id}")]
     DocumentNotFound { document_type: String, id: String },
 
-    /// 数据序列化错误
-    #[error("Serialization error: {source}")]
-    SerializationError {
-        #[from]
-        source: bson::ser::Error,
-    },
-
-    /// 数据反序列化错误
-    #[error("Deserialization error: {source}")]
-    DeserializationError {
-        #[from]
-        source: bson::de::Error,
-    },
-
-    /// MongoDB 特定错误
-    #[error("MongoDB error: {source}")]
-    MongoError {
-        #[from]
-        source: mongodb::error::Error,
-    },
 
     /// 配置错误
     #[error("Configuration error: {field}")]
@@ -71,13 +51,6 @@ impl MemoryError {
         match self {
             MemoryError::DatabaseConnectionFailed { .. } => true,
             MemoryError::DatabaseOperationFailed { .. } => false, // 需要根据具体错误判断
-            MemoryError::MongoError { source } => {
-                // 网络错误通常可以重试 - 使用字符串检查替代私有方法
-                let error_str = source.to_string().to_lowercase();
-                error_str.contains("network")
-                    || error_str.contains("timeout")
-                    || error_str.contains("connection")
-            }
             MemoryError::ConcurrencyConflict { .. } => true,
             _ => false,
         }
@@ -89,9 +62,6 @@ impl MemoryError {
             MemoryError::DatabaseConnectionFailed { .. } => "DB_CONNECTION_FAILED",
             MemoryError::DatabaseOperationFailed { .. } => "DB_OPERATION_FAILED",
             MemoryError::DocumentNotFound { .. } => "DOCUMENT_NOT_FOUND",
-            MemoryError::SerializationError { .. } => "SERIALIZATION_ERROR",
-            MemoryError::DeserializationError { .. } => "DESERIALIZATION_ERROR",
-            MemoryError::MongoError { .. } => "MONGO_ERROR",
             MemoryError::ConfigurationError { .. } => "CONFIGURATION_ERROR",
             MemoryError::ValidationError { .. } => "VALIDATION_ERROR",
             MemoryError::ConcurrencyConflict { .. } => "CONCURRENCY_CONFLICT",
