@@ -40,4 +40,3 @@ pub use memory_data::{
     MemoryCorpus, MemoryDataAccess, MemoryFragment, MemoryQuery, MemoryType, MessageDirection,
     SemanticMemory, SkillExpertise, StrategicInferentialMemory, TimeRange, UserStatistics,
 };
-

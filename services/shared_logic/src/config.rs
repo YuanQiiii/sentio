@@ -109,7 +109,6 @@ pub struct TelemetryConfig {
     pub json_format: bool,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
     /// 服务器监听地址

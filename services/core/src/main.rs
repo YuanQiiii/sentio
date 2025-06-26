@@ -1,8 +1,6 @@
 use anyhow::Result;
 use sentio_llm::{DeepSeekClient, LlmClient, LlmRequest};
-use shared_logic::{
-    config, InteractionLog, MemoryDataAccess, MessageDirection,
-};
+use shared_logic::{config, InteractionLog, MemoryDataAccess, MessageDirection};
 use std::collections::HashMap;
 
 // 导入本地模块
@@ -21,7 +19,6 @@ async fn main() -> Result<()> {
     eprintln!("📝 开始初始化配置...");
     config::initialize_config().await?;
     eprintln!("✅ 配置初始化完成");
-
 
     // 第三步：基于配置初始化遥测系统
     let global_config = config::get_config();

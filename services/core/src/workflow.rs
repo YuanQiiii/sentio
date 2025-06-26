@@ -1,6 +1,5 @@
-
-use sentio_llm::LlmClient;
 use sentio_email::SmtpClient;
+use sentio_llm::LlmClient;
 
 pub struct EmailWorkflow {
     pub llm_client: Box<dyn LlmClient + Send + Sync>,
@@ -21,13 +20,13 @@ impl EmailWorkflow {
 
 #[cfg(test)]
 mod tests {
-        use sentio_llm::{LlmClient, LlmRequest, LlmResponse, LlmResult, TokenUsage, ResponseMetadata};
-    use sentio_email::{SmtpClient, EmailResult, MessageId, OutgoingMessage, EmailAddress};
-    
+    use sentio_email::{EmailAddress, EmailResult, MessageId, OutgoingMessage, SmtpClient};
+    use sentio_llm::{LlmClient, LlmRequest, LlmResponse, LlmResult, ResponseMetadata, TokenUsage};
+
+    use super::EmailWorkflow;
     use async_trait::async_trait;
     use chrono::Utc;
     use std::collections::HashMap;
-    use super::EmailWorkflow;
 
     // Mock LlmClient
     pub struct MockLlmClient {
@@ -46,10 +45,11 @@ mod tests {
 
     #[async_trait]
     impl LlmClient for MockLlmClient {
-        
-
         async fn generate_response(&self, request: &LlmRequest) -> LlmResult<LlmResponse> {
-            self.generate_response_calls.lock().unwrap().push(request.clone());
+            self.generate_response_calls
+                .lock()
+                .unwrap()
+                .push(request.clone());
             Ok(LlmResponse {
                 request_id: request.id,
                 content: self.mock_response_content.clone(),
@@ -68,8 +68,6 @@ mod tests {
             })
         }
     }
-
-    
 
     // Mock SmtpClient
     pub struct MockSmtpClient {
@@ -93,7 +91,10 @@ mod tests {
     #[async_trait]
     impl SmtpClient for MockSmtpClient {
         async fn send_message(&self, message: &OutgoingMessage) -> EmailResult<MessageId> {
-            self.send_message_calls.lock().unwrap().push(message.clone());
+            self.send_message_calls
+                .lock()
+                .unwrap()
+                .push(message.clone());
             Ok(MessageId::new("mock_message_id".to_string()))
         }
 
@@ -118,8 +119,6 @@ mod tests {
         }
     }
 
-    
-
     #[tokio::test]
     async fn test_email_workflow_new_with_clients() {
         let mock_llm_client = Box::new(MockLlmClient::new("mocked llm response"));
@@ -128,10 +127,18 @@ mod tests {
         let workflow = EmailWorkflow::new_with_clients(mock_llm_client, mock_email_client);
 
         // Verify that the clients are correctly set
-        let _llm_client_ref = workflow.llm_client.as_any().downcast_ref::<MockLlmClient>().unwrap();
-        
+        let _llm_client_ref = workflow
+            .llm_client
+            .as_any()
+            .downcast_ref::<MockLlmClient>()
+            .unwrap();
 
-        let email_client_ref = workflow.email_client.as_any().downcast_ref::<MockSmtpClient>().unwrap();
-        assert_eq!(*email_client_ref.is_connected_value.lock().unwrap(), false); // Should be false as connect() is not called by new_with_clients
+        let email_client_ref = workflow
+            .email_client
+            .as_any()
+            .downcast_ref::<MockSmtpClient>()
+            .unwrap();
+        assert_eq!(*email_client_ref.is_connected_value.lock().unwrap(), false);
+        // Should be false as connect() is not called by new_with_clients
     }
 }

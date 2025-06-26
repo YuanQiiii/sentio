@@ -5,8 +5,8 @@
 
 use async_trait::async_trait;
 use shared_logic::config;
-use tracing::{debug, info, warn};
 use std::any::Any;
+use tracing::{debug, info, warn};
 
 use crate::error::{EmailError, EmailResult};
 use crate::types::{EmailAddress, MessageId, OutgoingMessage};
