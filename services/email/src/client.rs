@@ -6,13 +6,14 @@
 use async_trait::async_trait;
 use shared_logic::config;
 use tracing::{debug, info, warn};
+use std::any::Any;
 
 use crate::error::{EmailError, EmailResult};
 use crate::types::{EmailAddress, MessageId, OutgoingMessage};
 
 /// SMTP 邮件发送客户端接口
 #[async_trait]
-pub trait SmtpClient {
+pub trait SmtpClient: Send + Sync + AsAny {
     /// 发送邮件
     ///
     /// # 参数
@@ -41,6 +42,22 @@ pub trait SmtpClient {
 
     /// 检查连接是否活跃
     async fn is_connected(&self) -> bool;
+}
+
+// Helper trait to allow downcasting of trait objects
+pub trait AsAny {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+impl<T: 'static + SmtpClient + Send + Sync> AsAny for T {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 /// 简单 SMTP 客户端实现

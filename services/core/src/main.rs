@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 // 导入本地模块
 mod workflow;
-use workflow::demonstrate_workflow;
+use sentio_core::demonstrate_workflow;
 
 #[tokio::main]
 async fn main() -> Result<()> {

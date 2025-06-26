@@ -12,6 +12,7 @@ use shared_logic::config::{get_config, LlmConfig};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use std::any::Any;
 use tracing::{debug, error, info, warn};
 
 /// 简单的模板渲染函数
@@ -30,9 +31,25 @@ fn render_template(template: &str, context: &HashMap<String, Value>) -> String {
 
 /// LLM 客户端接口 trait
 #[async_trait::async_trait]
-pub trait LlmClient: Send + Sync {
+pub trait LlmClient: Send + Sync + AsAny {
     /// 生成响应
     async fn generate_response(&self, request: &LlmRequest) -> LlmResult<LlmResponse>;
+}
+
+// Helper trait to allow downcasting of trait objects
+pub trait AsAny {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+impl<T: 'static + LlmClient + Send + Sync> AsAny for T {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 /// DeepSeek API 客户端实现

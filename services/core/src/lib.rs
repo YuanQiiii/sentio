@@ -32,7 +32,16 @@
 //!                        └───────────────┘
 //! ```
 
-pub mod workflow;
+use anyhow::Result;
 
-// 重新导出核心功能
-pub use workflow::{demonstrate_workflow, EmailWorkflow};
+
+
+pub mod workflow;
+pub use workflow::EmailWorkflow;
+
+pub async fn demonstrate_workflow() -> Result<()> {
+    // Placeholder implementation for now
+    // This function will be expanded later to demonstrate the full email workflow
+    Ok(())
+}
+
