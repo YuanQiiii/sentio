@@ -22,6 +22,7 @@ rand = "0.8"
 async-imap = "0.10"
 native-tls = "0.2"
 regex = "1.0"
+trust-dns-resolver = { version = "0.23.2", features = ["tokio-runtime"] }
 
 [dev-dependencies]
 tokio-test = "0.4"

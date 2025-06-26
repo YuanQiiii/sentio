@@ -44,8 +44,8 @@
 //!     let message = OutgoingMessage::new(from, to, "测试邮件".to_string(), body);
 //!     
 //!     // 发送邮件
-//!     let message_id = client.send_message(&message).await?;
-//!     println!("邮件发送成功，ID: {}", message_id);
+//!     // let message_id = client.send_message(&message).await?;
+//!     // println!("邮件发送成功，ID: {}", message_id);
 //!     
 //!     Ok(())
 //! }

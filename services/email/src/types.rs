@@ -48,6 +48,8 @@ impl std::fmt::Display for EmailAddress {
     }
 }
 
+
+
 /// 邮件消息 ID
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct MessageId(pub String);

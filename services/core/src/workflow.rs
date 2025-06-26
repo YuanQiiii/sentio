@@ -1,5 +1,7 @@
-use sentio_email::SmtpClient;
-use sentio_llm::LlmClient;
+use anyhow::Result;
+use sentio_email::{OutgoingMessage, SmtpClient};
+use sentio_llm::{LlmClient, LlmRequest, LlmResponse};
+use tracing::info;
 
 pub struct EmailWorkflow {
     pub llm_client: Box<dyn LlmClient + Send + Sync>,
@@ -15,6 +17,39 @@ impl EmailWorkflow {
             llm_client,
             email_client,
         }
+    }
+
+    pub async fn process_email(&self, message: &OutgoingMessage) -> Result<()> {
+        info!("开始处理邮件: {}", message.subject);
+
+        // 1. 使用 LLM 客户端分析邮件内容
+        let llm_request = LlmRequest::new(
+            "email_analysis.summarize_thread".to_string(), // 假设有这个提示词
+            std::collections::HashMap::from([(
+                "email_content".to_string(),
+                serde_json::json!(message.body.text.clone().unwrap_or_default()),
+            )]),
+        );
+        let llm_response: LlmResponse = self.llm_client.generate_response(&llm_request).await?;
+        info!("LLM 分析结果: {}", llm_response.content);
+
+        // 2. 模拟发送回复邮件
+        // 实际应用中，这里会根据 LLM 分析结果生成回复内容
+        let reply_body = sentio_email::EmailBody::text(format!(
+            "这是对您邮件的回复：\n\n{}",
+            llm_response.content
+        ));
+        let reply_message = sentio_email::OutgoingMessage::new(
+            message.to[0].clone(),      // 假设回复给第一个收件人
+            vec![message.from.clone()], // 回复给发件人
+            format!("Re: {}", message.subject),
+            reply_body,
+        );
+
+        self.email_client.send_message(&reply_message).await?;
+        info!("已发送回复邮件给: {:?}", reply_message.to);
+
+        Ok(())
     }
 }
 

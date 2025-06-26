@@ -33,11 +33,11 @@
 //! ```
 
 use anyhow::Result;
-use sentio_llm::DeepSeekClient;
-
 use async_trait::async_trait;
-use sentio_email::{EmailAddress, EmailResult, MessageId, OutgoingMessage, SmtpClient};
+use sentio_email::{EmailAddress, EmailBody, EmailResult, MessageId, OutgoingMessage, SmtpClient};
+use sentio_llm::DeepSeekClient;
 use std::sync::Mutex;
+use tracing::info;
 
 pub struct MockSmtpClient {
     pub send_message_calls: Mutex<Vec<OutgoingMessage>>,
@@ -92,20 +92,32 @@ pub mod workflow;
 pub use workflow::EmailWorkflow;
 
 pub async fn demonstrate_workflow() -> Result<()> {
-    tracing::info!("Demonstrating email workflow...");
+    info!("Demonstrating email workflow...");
 
     // Initialize LLM client
     let llm_client = Box::new(DeepSeekClient::new()?);
 
     // Initialize Email client (using a mock for demonstration)
-    // In a real application, you would initialize a proper SmtpClient
-    let email_client = Box::new(MockSmtpClient::new()); // Assuming MockSmtpClient is available in this scope
+    let email_client = Box::new(MockSmtpClient::new());
 
-    let _workflow = EmailWorkflow::new_with_clients(llm_client, email_client);
+    let workflow = EmailWorkflow::new_with_clients(llm_client, email_client);
 
-    // Here you would call methods on `workflow` to demonstrate its functionality
-    // For example: workflow.process_email(...).await?;
+    // Create a mock incoming email
+    let from_addr = EmailAddress::new("sender@example.com".to_string());
+    let to_addr = vec![EmailAddress::new("recipient@example.com".to_string())];
+    let email_body = EmailBody::text(
+        "Hello, I need help with my account. Can you reset my password?".to_string(),
+    );
+    let incoming_message = OutgoingMessage::new(
+        from_addr,
+        to_addr,
+        "Password Reset Request".to_string(),
+        email_body,
+    );
 
-    tracing::info!("Email workflow demonstration complete.");
+    // Process the email
+    workflow.process_email(&incoming_message).await?;
+
+    info!("Email workflow demonstration complete.");
     Ok(())
 }
