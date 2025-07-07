@@ -345,3 +345,119 @@ impl LlmClient for DeepSeekClient {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    // Mock LLM Client for testing
+    struct MockLlmClient {
+        response_content: String,
+    }
+
+    impl MockLlmClient {
+        fn new(response: &str) -> Self {
+            Self {
+                response_content: response.to_string(),
+            }
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl LlmClient for MockLlmClient {
+        async fn generate_response(&self, request: &LlmRequest) -> LlmResult<LlmResponse> {
+            Ok(LlmResponse {
+                request_id: request.id,
+                content: self.response_content.clone(),
+                token_usage: TokenUsage {
+                    prompt_tokens: 10,
+                    completion_tokens: 20,
+                    total_tokens: 30,
+                },
+                metadata: ResponseMetadata {
+                    model: "mock-model".to_string(),
+                    latency_ms: 100,
+                    retry_count: 0,
+                    extra: HashMap::new(),
+                },
+                created_at: Utc::now(),
+            })
+        }
+    }
+
+    #[test]
+    fn test_render_template() {
+        let template = "Hello {name}, you are {age} years old.";
+        let mut context = HashMap::new();
+        context.insert("name".to_string(), serde_json::json!("Alice"));
+        context.insert("age".to_string(), serde_json::json!(25));
+
+        let result = render_template(template, &context);
+        assert_eq!(result, "Hello Alice, you are 25 years old.");
+    }
+
+    #[test]
+    fn test_render_template_missing_variable() {
+        let template = "Hello {name}, you are {age} years old.";
+        let mut context = HashMap::new();
+        context.insert("name".to_string(), serde_json::json!("Alice"));
+        // Missing 'age' variable
+
+        let result = render_template(template, &context);
+        assert_eq!(result, "Hello Alice, you are {age} years old.");
+    }
+
+    #[tokio::test]
+    async fn test_mock_llm_client() {
+        let mock_client = MockLlmClient::new("This is a test response");
+        
+        // Create request manually without global config dependency
+        let request = LlmRequest {
+            id: uuid::Uuid::new_v4(),
+            prompt_name: "test.prompt".to_string(),
+            context: HashMap::new(),
+            parameters: LlmParameters::default(),
+            created_at: Utc::now(),
+        };
+
+        let response = mock_client.generate_response(&request).await.unwrap();
+        
+        assert_eq!(response.request_id, request.id);
+        assert_eq!(response.content, "This is a test response");
+        assert_eq!(response.token_usage.total_tokens, 30);
+        assert_eq!(response.metadata.model, "mock-model");
+    }
+
+    #[test]
+    fn test_llm_request_creation_manual() {
+        // Test manual creation without global config
+        let request = LlmRequest {
+            id: uuid::Uuid::new_v4(),
+            prompt_name: "test.prompt".to_string(),
+            context: {
+                let mut context = HashMap::new();
+                context.insert("test_var".to_string(), serde_json::json!("test_value"));
+                context
+            },
+            parameters: LlmParameters::default(),
+            created_at: Utc::now(),
+        };
+
+        assert_eq!(request.prompt_name, "test.prompt");
+        assert_eq!(request.context.get("test_var").unwrap(), &serde_json::json!("test_value"));
+        assert_eq!(request.parameters.model, "deepseek-chat");
+        assert_eq!(request.parameters.temperature, 0.7);
+    }
+
+    #[test]
+    fn test_llm_parameters_default() {
+        let params = LlmParameters::default();
+        
+        assert_eq!(params.model, "deepseek-chat");
+        assert_eq!(params.temperature, 0.7);
+        assert_eq!(params.max_tokens, 2048);
+        assert_eq!(params.top_p, 0.9);
+        assert!(!params.stream);
+    }
+}

@@ -370,6 +370,7 @@ pub async fn create_smtp_client() -> EmailResult<impl SmtpClient> {
 mod tests {
     use super::SimpleSmtpClient;
     use super::*;
+    use crate::{EmailBody, EmailAttachment};
 
     #[tokio::test]
     async fn test_smtp_client_creation() {
@@ -384,7 +385,6 @@ mod tests {
         };
 
         // Mock the global config for this test
-        // This is a simplified approach; in a real project, you might use a more robust mocking framework
         let mut client = SimpleSmtpClient {
             config: email_config,
             connected: false,
@@ -435,5 +435,99 @@ mod tests {
             .verify_address_with_options(&invalid_email, true)
             .await
             .unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_email_types() {
+        // Test EmailAddress creation
+        let email = EmailAddress::new("test@example.com".to_string());
+        assert_eq!(email.email, "test@example.com");
+        assert!(email.name.is_none());
+        assert!(email.is_valid());
+
+        let email_with_name = EmailAddress::with_name("user@test.com".to_string(), "Test User".to_string());
+        assert_eq!(email_with_name.email, "user@test.com");
+        assert_eq!(email_with_name.name, Some("Test User".to_string()));
+
+        // Test EmailBody
+        let text_body = EmailBody::text("Hello World".to_string());
+        assert!(text_body.text.is_some());
+        assert!(text_body.html.is_none());
+        assert!(!text_body.is_empty());
+
+        let html_body = EmailBody::html("<h1>Hello World</h1>".to_string());
+        assert!(html_body.html.is_some());
+        assert!(html_body.text.is_none());
+
+        // Test OutgoingMessage
+        let from = EmailAddress::new("sender@test.com".to_string());
+        let to = vec![EmailAddress::new("recipient@test.com".to_string())];
+        let message = OutgoingMessage::new(from, to, "Test Subject".to_string(), text_body);
+        
+        assert_eq!(message.subject, "Test Subject");
+        assert_eq!(message.to.len(), 1);
+        assert!(message.validate().is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_email_attachment_validation() {
+        let safe_attachment = EmailAttachment {
+            filename: "document.pdf".to_string(),
+            content_type: "application/pdf".to_string(),
+            size: 1024,
+            content_id: None,
+            is_inline: false,
+        };
+        
+        assert!(safe_attachment.is_safe_type());
+        assert!(safe_attachment.is_reasonable_size());
+
+        let unsafe_attachment = EmailAttachment {
+            filename: "script.exe".to_string(),
+            content_type: "application/exe".to_string(),
+            size: 1024,
+            content_id: None,
+            is_inline: false,
+        };
+        
+        assert!(!unsafe_attachment.is_safe_type());
+
+        let large_attachment = EmailAttachment {
+            filename: "large.pdf".to_string(),
+            content_type: "application/pdf".to_string(),
+            size: 100 * 1024 * 1024, // 100MB
+            content_id: None,
+            is_inline: false,
+        };
+        
+        assert!(!large_attachment.is_reasonable_size());
+    }
+
+    #[tokio::test]
+    async fn test_message_validation() {
+        let from = EmailAddress::new("sender@test.com".to_string());
+        let to = vec![EmailAddress::new("recipient@test.com".to_string())];
+        let body = EmailBody::text("Test content".to_string());
+        
+        // Valid message
+        let valid_message = OutgoingMessage::new(from.clone(), to.clone(), "Test".to_string(), body.clone());
+        assert!(valid_message.validate().is_ok());
+
+        // Empty subject
+        let empty_subject = OutgoingMessage::new(from.clone(), to.clone(), "".to_string(), body.clone());
+        assert!(empty_subject.validate().is_err());
+
+        // Empty recipients
+        let empty_to = OutgoingMessage::new(from.clone(), vec![], "Test".to_string(), body.clone());
+        assert!(empty_to.validate().is_err());
+
+        // Empty body
+        let empty_body = EmailBody {
+            text: None,
+            html: None,
+            content_type: "text/plain".to_string(),
+        };
+        let empty_content = OutgoingMessage::new(from, to, "Test".to_string(), empty_body);
+        assert!(empty_content.validate().is_err());
     }
 }

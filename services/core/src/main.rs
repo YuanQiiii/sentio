@@ -23,7 +23,9 @@ async fn main() -> Result<()> {
 
     // 第二步：初始化遥测系统
     let global_config = config::get_config();
-    sentio_telemetry::init_telemetry_with_config(&global_config.telemetry)?;
+    let log_dir = std::path::PathBuf::from("logs");
+    let (_subscriber, _guard) = sentio_telemetry::init_telemetry_with_config(&global_config.telemetry, Some(&log_dir))?;
+    tracing::subscriber::set_global_default(_subscriber).expect("Failed to set global subscriber");
 
     // 第三步：初始化记忆服务（文件持久化）
     eprintln!("💾 开始初始化记忆服务...");
