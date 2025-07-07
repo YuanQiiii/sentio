@@ -399,3 +399,51 @@ impl MemoryCorpus {
         }
     }
 }
+
+
+/// 记忆查询结构
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryQuery {
+    /// 用户ID
+    pub user_id: Option<String>,
+    /// 查询文本
+    pub query_text: String,
+    /// 过滤条件
+    pub filters: Option<HashMap<String, serde_json::Value>>,
+}
+
+/// 记忆片段 - 用于搜索结果
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryFragment {
+    /// 片段ID
+    pub fragment_id: String,
+    /// 用户ID
+    pub user_id: String,
+    /// 内容
+    pub content: String,
+    /// 来源 (e.g., "episodic", "semantic")
+    pub source: String,
+    /// 时间戳
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+    /// 相关性得分
+    pub relevance_score: Option<f64>,
+}
+
+/// 用户统计信息
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserStatistics {
+    /// 用户ID
+    pub user_id: String,
+    /// 账户创建时间
+    pub account_created: chrono::DateTime<chrono::Utc>,
+    /// 总交互次数
+    pub total_interactions: u64,
+    /// 首次交互时间
+    pub first_interaction: chrono::DateTime<chrono::Utc>,
+    /// 末次交互时间
+    pub last_interaction: chrono::DateTime<chrono::Utc>,
+    /// 总记忆条目数
+    pub total_memories: u64,
+    /// 记忆类型分布
+    pub memory_type_distribution: HashMap<String, u64>,
+}

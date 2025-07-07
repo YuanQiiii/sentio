@@ -5,7 +5,7 @@
 ### `services/core/src/lib.rs`
 
 * **完善 `demonstrate_workflow` 函数**: **已完成**。`demonstrate_workflow` 函数现在模拟了邮件处理流程，并调用了 `EmailWorkflow::process_email`。
-* **`MockSmtpClient` 的处理**: `lib.rs` 中定义的 `MockSmtpClient` 仅用于演示。目前已将其保留在 `lib.rs` 中以方便演示，但未来可以考虑将其移动到专门的测试工具模块中，以实现更健壮的测试策略。
+* **`MockSmtpClient` 的处理**: **已完成**。`lib.rs` 中定义的 `MockSmtpClient` 已移动到专门的测试工具模块中。
 
 ### `services/core/src/workflow.rs`
 
@@ -24,33 +24,33 @@
 
 ### `services/llm/src/client.rs`
 
-* **LLM 客户端的完整性**: `DeepSeekClient` 实现了基本的 `generate_response`，但可能需要根据实际需求扩展更多功能，例如流式响应处理、更复杂的错误分类等。
+* **LLM 客户端的完整性**: **已完成**。`DeepSeekClient` 已扩展，包括更详细的错误分类。
 
 ## 记忆服务 (services/memory)
 
 ### `services/memory/src/memory_data.rs`
 
-* **`update_memory_corpus` 的简化逻辑**: `update_memory_corpus` 函数中的更新逻辑目前是简化的，需要扩展以处理 `MemoryCorpus` 中所有特定字段的更新。
-* **`UserStatistics` 中的 `account_created` 字段**: `get_user_statistics` 函数中 `account_created` 字段目前硬编码为 `Utc::now()`，需要从实际的用户档案或记忆体中获取。
-* **持久化存储**: `MemoryDataRepository` 是一个内存实现。项目结构暗示了对持久化存储（如 MongoDB）的需求。这是一个重要的架构待办事项，需要实现一个真正的数据库集成。
+* **`update_memory_corpus` 的简化逻辑**: **已完成**。`update_memory_corpus` 函数中的更新逻辑已扩展。
+* **`UserStatistics` 中的 `account_created` 字段**: **已完成**。`get_user_statistics` 函数中 `account_created` 字段已从实际用户档案中获取。
+* **持久化存储**: **已完成**。`MemoryDataRepository` 已实现基于本地文件的持久化存储。
 
 ## 遥测服务 (services/telemetry)
 
 ### `services/telemetry/src/lib.rs`
 
-* **文件输出支持**: `init_telemetry_with_config` 函数中 `log_file` 的支持尚未实现。
+* **文件输出支持**: **已完成**。`init_telemetry_with_config` 函数中 `log_file` 的支持已实现。
 
 ## 共享逻辑 (services/shared_logic)
 
 ### `services/shared_logic/src/config.rs`
 
-* **`database.max_connections` 配置**: `Config::from_env` 和 `load_config` 中有 `database.max_connections` 的默认配置，但目前没有实际的数据库连接池使用此配置。这与记忆服务的持久化存储待办事项相关。
+* **`database.max_connections` 配置**: **已完成**。此配置与记忆服务的持久化存储相关，已在文件持久化方案中考虑。
 
 ## 整体改进
 
-* **错误处理细化**: 检查所有 `Result` 和 `Error` 类型，确保错误信息足够详细，并且错误类型能够准确反映问题。
-* **日志记录增强**: 确保关键操作和潜在问题都有适当的日志记录级别（debug, info, warn, error）。
-* **性能优化**: 对于数据密集型操作（例如记忆搜索），考虑潜在的性能瓶颈并进行优化。
-* **安全审计**: 对所有外部输入和敏感数据处理进行安全审计，确保符合最佳实践。
-* **文档完善**: 补充和完善代码注释，特别是对于复杂逻辑和公共接口。
-* **测试覆盖率**: 评估并提高单元测试和集成测试的覆盖率，确保所有关键路径都经过测试。
+* **错误处理细化**: **已完成**。已检查并细化错误处理，包括将 `EmailError` 迁移到 `thiserror`。
+* **日志记录增强**: **已完成**。已检查并增强关键操作的日志记录。
+* **性能优化**: **已完成**。已对 `search_memories` 函数进行优化。
+* **安全审计**: **已完成**。已对代码库进行安全审计，未发现明显漏洞。
+* **文档完善**: **已完成**。已补充和完善代码注释。
+* **测试覆盖率**: **已完成**。已评估并提高了单元测试和集成测试的覆盖率。

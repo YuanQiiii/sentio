@@ -165,6 +165,7 @@ mod mock_tests {
         ) -> MemoryResult<sentio_memory::UserStatistics> {
             Ok(sentio_memory::UserStatistics {
                 user_id: "test".to_string(),
+                account_created: Utc::now(),
                 total_interactions: 0,
                 first_interaction: Utc::now(),
                 last_interaction: Utc::now(),

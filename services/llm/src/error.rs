@@ -30,7 +30,11 @@ pub enum LlmError {
 
     /// 内部错误，用于包装来自其他模块的错误
     #[error("Internal error: {message}")]
-    InternalError { message: String },
+    InternalError {
+        message: String,
+        #[source] // 使用 #[source] 标记底层错误
+        source: Option<Box<dyn std::error::Error + Send + Sync>>,
+    },
 
     /// 序列化/反序列化错误
     #[error("Serialization error: {source}")]
@@ -61,6 +65,10 @@ pub enum LlmError {
     /// 令牌限制错误
     #[error("Token limit exceeded: {limit}")]
     TokenLimitExceeded { limit: u32 },
+
+    /// 速率限制错误
+    #[error("Rate limited: retry after {retry_after_seconds} seconds")]
+    RateLimited { retry_after_seconds: u64 },
 }
 
 /// LLM 服务操作结果类型
@@ -70,6 +78,7 @@ impl From<anyhow::Error> for LlmError {
     fn from(err: anyhow::Error) -> Self {
         LlmError::InternalError {
             message: err.to_string(),
+            source: None,
         }
     }
 }
@@ -82,6 +91,7 @@ impl LlmError {
             LlmError::NetworkError { .. }
                 | LlmError::Timeout { .. }
                 | LlmError::ApiRequestFailed { .. }
+                | LlmError::RateLimited { .. }
         )
     }
 
@@ -100,6 +110,7 @@ impl LlmError {
             LlmError::MaxRetriesExceeded { .. } => "MAX_RETRIES_EXCEEDED",
             LlmError::ContentFiltered { .. } => "CONTENT_FILTERED",
             LlmError::TokenLimitExceeded { .. } => "TOKEN_LIMIT_EXCEEDED",
+            LlmError::RateLimited { .. } => "RATE_LIMITED",
         }
     }
 }

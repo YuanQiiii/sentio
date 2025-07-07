@@ -8,3 +8,8 @@ shared_logic = { path = "../shared_logic" }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 anyhow = { workspace = true }
+tracing-appender = "0.2.3"
+
+[dev-dependencies]
+tempfile = "3.10.1"
+chrono = { workspace = true }

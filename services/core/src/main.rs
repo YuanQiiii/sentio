@@ -2,6 +2,7 @@ use anyhow::Result;
 use sentio_llm::{DeepSeekClient, LlmClient, LlmRequest};
 use shared_logic::{config, InteractionLog, MemoryDataAccess, MessageDirection};
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 // 导入本地模块
 mod workflow;
@@ -20,11 +21,17 @@ async fn main() -> Result<()> {
     config::initialize_config().await?;
     eprintln!("✅ 配置初始化完成");
 
-    // 第三步：基于配置初始化遥测系统
+    // 第二步：初始化遥测系统
     let global_config = config::get_config();
     sentio_telemetry::init_telemetry_with_config(&global_config.telemetry)?;
 
-    // 第三步：打印启动日志
+    // 第三步：初始化记忆服务（文件持久化）
+    eprintln!("💾 开始初始化记忆服务...");
+    let memory_file_path = PathBuf::from("memory.json"); // 默认持久化文件路径
+    MemoryDataAccess::initialize(memory_file_path).await?;
+    eprintln!("✅ 记忆服务初始化完成");
+
+    // 第四步：打印启动日志
     tracing::info!(
         log_level = ?global_config.telemetry.log_level,
         llm_provider = %global_config.llm.provider,

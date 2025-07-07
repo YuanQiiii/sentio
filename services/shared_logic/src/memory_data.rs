@@ -8,6 +8,9 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
+use std::path::PathBuf;
+use tokio::fs;
+use tracing::{info, error};
 
 // In-memory database for development/testing
 use std::sync::Arc;
@@ -17,16 +20,18 @@ lazy_static::lazy_static! {
     static ref IN_MEMORY_DB: Arc<RwLock<InMemoryDb>> = Arc::new(RwLock::new(InMemoryDb::default()));
 }
 
-#[derive(Default)]
-struct InMemoryDb {
+#[derive(Default, Serialize, Deserialize)]
+pub struct InMemoryDb {
     memory_corpus: Vec<MemoryCorpus>,
     memory_fragments: Vec<MemoryFragment>,
     interaction_logs: Vec<InteractionLog>,
     metrics: DbMetrics,
+    #[serde(skip)] // 不序列化文件路径
+    file_path: PathBuf,
 }
 
-#[derive(Default)]
-struct DbMetrics {
+#[derive(Default, Serialize, Deserialize)]
+pub struct DbMetrics {
     reads: u64,
     writes: u64,
     query_hits: u64,
@@ -35,6 +40,50 @@ struct DbMetrics {
 
 fn get_db() -> Arc<RwLock<InMemoryDb>> {
     IN_MEMORY_DB.clone()
+}
+
+impl InMemoryDb {
+    /// 从文件加载数据
+    async fn load_from_file(&mut self) -> Result<()> {
+        if !self.file_path.exists() {
+            info!("Persistence file not found: {:?}. Starting with empty data.", self.file_path);
+            return Ok(());
+        }
+
+        let data = fs::read_to_string(&self.file_path).await.map_err(|e| {
+            error!("Failed to read persistence file {:?}: {}", self.file_path, e);
+            anyhow::anyhow!("Failed to read persistence file: {}", e)
+        })?;
+
+        let loaded_data: InMemoryDb = serde_json::from_str(&data).map_err(|e| {
+            error!("Failed to parse persistence data from {:?}: {}", self.file_path, e);
+            anyhow::anyhow!("Failed to parse persistence data: {}", e)
+        })?;
+
+        self.memory_corpus = loaded_data.memory_corpus;
+        self.memory_fragments = loaded_data.memory_fragments;
+        self.interaction_logs = loaded_data.interaction_logs;
+        self.metrics = loaded_data.metrics;
+
+        info!("Data loaded from persistence file: {:?}", self.file_path);
+        Ok(())
+    }
+
+    /// 将数据保存到文件
+    async fn save_to_file(&self) -> Result<()> {
+        let data = serde_json::to_string_pretty(self).map_err(|e| {
+            error!("Failed to serialize data for persistence: {}", e);
+            anyhow::anyhow!("Failed to serialize data: {}", e)
+        })?;
+
+        fs::write(&self.file_path, data).await.map_err(|e| {
+            error!("Failed to write data to persistence file {:?}: {}", self.file_path, e);
+            anyhow::anyhow!("Failed to write persistence file: {}", e)
+        })?;
+
+        info!("Data saved to persistence file: {:?}", self.file_path);
+        Ok(())
+    }
 }
 
 /// 记忆类型枚举
@@ -229,7 +278,7 @@ pub enum CommunicationStrategy {
 }
 
 /// 记忆查询参数
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryQuery {
     pub user_id: String,
     pub memory_types: Option<Vec<MemoryType>>,
@@ -239,7 +288,7 @@ pub struct MemoryQuery {
     pub limit: Option<i64>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimeRange {
     pub start: DateTime<Utc>,
     pub end: DateTime<Utc>,
@@ -260,43 +309,51 @@ pub struct UserStatistics {
 pub struct MemoryDataAccess;
 
 impl MemoryDataAccess {
+    /// 初始化内存数据库，从指定文件加载数据。
+    pub async fn initialize(file_path: PathBuf) -> Result<()> {
+        let db = get_db();
+        let mut db_lock = db.write().await;
+        db_lock.file_path = file_path;
+        db_lock.load_from_file().await
+    }
+
     /// 创建或更新用户的记忆体
     pub async fn save_memory_corpus(corpus: &MemoryCorpus) -> Result<Uuid> {
         Self::validate_memory_corpus(corpus)?;
 
         let db = get_db();
-        let mut db = db.write().await;
+        let mut db_lock = db.write().await;
 
         let corpus_id = corpus.id.unwrap_or_else(Uuid::new_v4);
         let mut new_corpus = corpus.clone();
         new_corpus.id = Some(corpus_id);
 
-        if let Some(existing) = db.memory_corpus.iter_mut().find(|c| c.id == new_corpus.id) {
+        if let Some(existing) = db_lock.memory_corpus.iter_mut().find(|c| c.id == new_corpus.id) {
             *existing = new_corpus;
         } else {
-            db.memory_corpus.push(new_corpus);
+            db_lock.memory_corpus.push(new_corpus);
         }
-
+        db_lock.save_to_file().await?;
         Ok(corpus_id)
     }
 
     /// 根据用户ID获取记忆体
     pub async fn get_memory_corpus_by_user_id(user_id: &str) -> Result<Option<MemoryCorpus>> {
         let db = get_db();
-        let mut db = db.write().await;
+        let mut db_lock = db.write().await;
 
-        db.metrics.reads += 1;
+        db_lock.metrics.reads += 1;
 
-        let result = db
+        let result = db_lock
             .memory_corpus
             .iter()
             .find(|c| c.user_id == user_id)
             .cloned();
 
         if result.is_some() {
-            db.metrics.query_hits += 1;
+            db_lock.metrics.query_hits += 1;
         } else {
-            db.metrics.query_misses += 1;
+            db_lock.metrics.query_misses += 1;
         }
 
         Ok(result)
@@ -307,35 +364,35 @@ impl MemoryDataAccess {
         Self::validate_memory_fragment(fragment)?;
 
         let db = get_db();
-        let mut db = db.write().await;
+        let mut db_lock = db.write().await;
 
-        db.metrics.writes += 1;
+        db_lock.metrics.writes += 1;
 
         let fragment_id = fragment.id.unwrap_or_else(Uuid::new_v4);
         let mut new_fragment = fragment.clone();
         new_fragment.id = Some(fragment_id);
 
-        if let Some(existing) = db
+        if let Some(existing) = db_lock
             .memory_fragments
             .iter_mut()
             .find(|f| f.id == new_fragment.id)
         {
             *existing = new_fragment;
         } else {
-            db.memory_fragments.push(new_fragment);
+            db_lock.memory_fragments.push(new_fragment);
         }
-
+        db_lock.save_to_file().await?;
         Ok(fragment_id)
     }
 
     /// 搜索记忆片段
     pub async fn search_memory_fragments(query: &MemoryQuery) -> Result<Vec<MemoryFragment>> {
         let db = get_db();
-        let mut db = db.write().await;
+        let mut db_lock = db.write().await;
 
-        db.metrics.reads += 1;
+        db_lock.metrics.reads += 1;
 
-        let results: Vec<_> = db
+        let results: Vec<_> = db_lock
             .memory_fragments
             .iter()
             .filter(|f| f.user_id == query.user_id)
@@ -365,9 +422,9 @@ impl MemoryDataAccess {
             .collect();
 
         if results.is_empty() {
-            db.metrics.query_misses += 1;
+            db_lock.metrics.query_misses += 1;
         } else {
-            db.metrics.query_hits += results.len() as u64;
+            db_lock.metrics.query_hits += results.len() as u64;
         }
 
         Ok(results)
@@ -378,16 +435,16 @@ impl MemoryDataAccess {
         Self::validate_interaction_log(interaction)?;
 
         let db = get_db();
-        let mut db = db.write().await;
+        let mut db_lock = db.write().await;
 
-        db.metrics.writes += 1;
+        db_lock.metrics.writes += 1;
 
         let interaction_id = interaction.id.unwrap_or_else(Uuid::new_v4);
         let mut new_interaction = interaction.clone();
         new_interaction.id = Some(interaction_id);
 
-        db.interaction_logs.push(new_interaction);
-
+        db_lock.interaction_logs.push(new_interaction);
+        db_lock.save_to_file().await?;
         Ok(interaction_id)
     }
 
@@ -398,11 +455,11 @@ impl MemoryDataAccess {
         session_id: Option<&str>,
     ) -> Result<Vec<InteractionLog>> {
         let db = get_db();
-        let mut db = db.write().await;
+        let mut db_lock = db.write().await;
 
-        db.metrics.reads += 1;
+        db_lock.metrics.reads += 1;
 
-        let mut logs: Vec<_> = db
+        let mut logs: Vec<_> = db_lock
             .interaction_logs
             .iter()
             .filter(|log| log.user_id == user_id)
@@ -417,9 +474,9 @@ impl MemoryDataAccess {
         }
 
         if logs.is_empty() {
-            db.metrics.query_misses += 1;
+            db_lock.metrics.query_misses += 1;
         } else {
-            db.metrics.query_hits += logs.len() as u64;
+            db_lock.metrics.query_hits += logs.len() as u64;
         }
 
         Ok(logs)
@@ -428,11 +485,11 @@ impl MemoryDataAccess {
     /// 获取用户统计信息
     pub async fn get_user_statistics(user_id: &str) -> Result<UserStatistics> {
         let db = get_db();
-        let mut db = db.write().await;
+        let mut db_lock = db.write().await;
 
-        db.metrics.reads += 1;
+        db_lock.metrics.reads += 1;
 
-        let memory_type_counts = db
+        let memory_type_counts = db_lock
             .memory_fragments
             .iter()
             .filter(|f| f.user_id == user_id)
@@ -441,47 +498,55 @@ impl MemoryDataAccess {
                 acc
             });
 
-        let last_interaction = db
+        let last_interaction = db_lock
             .interaction_logs
             .iter()
             .filter(|log| log.user_id == user_id)
             .max_by_key(|log| log.timestamp)
             .map(|log| log.timestamp);
 
+        let account_created = db_lock
+            .memory_corpus
+            .iter()
+            .find(|c| c.user_id == user_id)
+            .map(|c| c.created_at)
+            .unwrap_or_else(Utc::now);
+
         Ok(UserStatistics {
             user_id: user_id.to_string(),
-            total_memories: db
+            total_memories: db_lock
                 .memory_fragments
                 .iter()
                 .filter(|f| f.user_id == user_id)
                 .count() as u64,
             memory_type_counts,
-            total_interactions: db
+            total_interactions: db_lock
                 .interaction_logs
                 .iter()
                 .filter(|log| log.user_id == user_id)
                 .count() as u64,
             last_interaction,
-            account_created: Utc::now(), // TODO: 需要从用户档案获取
+            account_created,
         })
     }
 
     /// 删除用户的所有数据 (GDPR 合规)
     pub async fn delete_user_data(user_id: &str) -> Result<u64> {
         let db = get_db();
-        let mut db = db.write().await;
+        let mut db_lock = db.write().await;
 
-        db.metrics.writes += 1;
+        db_lock.metrics.writes += 1;
 
-        let before_memories = db.memory_fragments.len();
-        let before_logs = db.interaction_logs.len();
+        let before_memories = db_lock.memory_fragments.len();
+        let before_logs = db_lock.interaction_logs.len();
 
-        db.memory_fragments.retain(|f| f.user_id != user_id);
-        db.interaction_logs.retain(|log| log.user_id != user_id);
+        db_lock.memory_fragments.retain(|f| f.user_id != user_id);
+        db_lock.interaction_logs.retain(|log| log.user_id != user_id);
 
-        let deleted_memories = before_memories - db.memory_fragments.len();
-        let deleted_logs = before_logs - db.interaction_logs.len();
+        let deleted_memories = before_memories - db_lock.memory_fragments.len();
+        let deleted_logs = before_logs - db_lock.interaction_logs.len();
 
+        db_lock.save_to_file().await?;
         Ok((deleted_memories + deleted_logs) as u64)
     }
 

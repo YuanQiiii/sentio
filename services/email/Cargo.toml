@@ -11,6 +11,7 @@ serde = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }
+thiserror = { workspace = true }
 
 # 邮件相关依赖
 lettre = "0.11"

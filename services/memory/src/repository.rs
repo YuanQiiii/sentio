@@ -70,6 +70,8 @@ pub struct MemoryFragment {
 pub struct UserStatistics {
     /// 用户ID
     pub user_id: String,
+    /// 账户创建时间
+    pub account_created: DateTime<Utc>,
     /// 总交互次数
     pub total_interactions: u64,
     /// 首次交互时间

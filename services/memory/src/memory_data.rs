@@ -3,16 +3,20 @@
 //! 提供线程安全的内存数据存储实现，使用 `Arc<RwLock<T>>` 进行同步。
 
 use crate::error::{MemoryError, MemoryResult};
-use crate::models::*;
-use crate::repository::*;
+use crate::models::{InteractionLog, MemoryCorpus};
+use crate::repository::{MemoryFragment, MemoryQuery, MemoryRepository, UserStatistics};
 use async_trait::async_trait;
 use chrono::Utc;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
+use tokio::fs;
 use tokio::sync::RwLock;
+use serde::{Serialize, Deserialize};
+use tracing::{error, info};
 
 /// 内存数据存储实现
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct MemoryDataRepository {
     /// 用户记忆体存储
     memory_corpus: Arc<RwLock<HashMap<String, MemoryCorpus>>>,
@@ -20,12 +24,74 @@ pub struct MemoryDataRepository {
     interactions: Arc<RwLock<HashMap<String, Vec<InteractionLog>>>>,
     /// 记忆片段存储
     memory_fragments: Arc<RwLock<HashMap<String, Vec<MemoryFragment>>>>,
+    /// 持久化文件路径
+    file_path: PathBuf,
+}
+
+/// 用于序列化/反序列化的数据结构
+#[derive(Debug, Serialize, Deserialize, Default)]
+struct PersistentData {
+    memory_corpus: HashMap<String, MemoryCorpus>,
+    interactions: HashMap<String, Vec<InteractionLog>>,
+    memory_fragments: HashMap<String, Vec<MemoryFragment>>,
 }
 
 impl MemoryDataRepository {
     /// 创建新的内存数据存储实例
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(file_path: PathBuf) -> Self {
+        Self {
+            memory_corpus: Arc::new(RwLock::new(HashMap::new())),
+            interactions: Arc::new(RwLock::new(HashMap::new())),
+            memory_fragments: Arc::new(RwLock::new(HashMap::new())),
+            file_path,
+        }
+    }
+
+    /// 从文件加载数据
+    async fn load_from_file(&self) -> MemoryResult<()> {
+        if !self.file_path.exists() {
+            info!("Persistence file not found: {:?}. Starting with empty data.", self.file_path);
+            return Ok(());
+        }
+
+        let data = fs::read_to_string(&self.file_path).await.map_err(|e| {
+            error!("Failed to read persistence file {:?}: {}", self.file_path, e);
+            MemoryError::DatabaseOperationFailed { operation: "read_persistence_file".to_string(), details: e.to_string() }
+        })?;
+
+        let persistent_data: PersistentData = serde_json::from_str(&data).map_err(|e| {
+            error!("Failed to parse persistence data from {:?}: {}", self.file_path, e);
+            MemoryError::DatabaseOperationFailed { operation: "parse_persistence_data".to_string(), details: e.to_string() }
+        })?;
+
+        *self.memory_corpus.write().await = persistent_data.memory_corpus;
+        *self.interactions.write().await = persistent_data.interactions;
+        *self.memory_fragments.write().await = persistent_data.memory_fragments;
+
+        info!("Data loaded from persistence file: {:?}", self.file_path);
+        Ok(())
+    }
+
+    /// 将数据保存到文件
+    async fn save_to_file(&self) -> MemoryResult<()> {
+        let persistent_data = PersistentData {
+            memory_corpus: self.memory_corpus.read().await.clone(),
+            interactions: self.interactions.read().await.clone(),
+            memory_fragments: self.memory_fragments.read().await.clone(),
+        };
+
+        let data = serde_json::to_string_pretty(&persistent_data).map_err(|e| {
+            error!("Failed to serialize data for persistence: {}", e);
+            MemoryError::DatabaseOperationFailed { operation: "serialize_data".to_string(), details: e.to_string() }
+        })?;
+
+        fs::write(&self.file_path, data).await.map_err(|e| {
+            error!("Failed to write data to persistence file {:?}: {}", self.file_path, e);
+            MemoryError::DatabaseOperationFailed { operation: "write_persistence_file".to_string(), details: e.to_string() }
+        })?;
+
+        info!("Data saved to persistence file: {:?}", self.file_path);
+        Ok(())
     }
 }
 
@@ -34,7 +100,7 @@ impl MemoryRepository for MemoryDataRepository {
     async fn save_memory_corpus(&self, corpus: &MemoryCorpus) -> MemoryResult<()> {
         let mut store = self.memory_corpus.write().await;
         store.insert(corpus.user_id.clone(), corpus.clone());
-        Ok(())
+        self.save_to_file().await
     }
 
     async fn get_memory_corpus(&self, user_id: &str) -> MemoryResult<Option<MemoryCorpus>> {
@@ -50,15 +116,40 @@ impl MemoryRepository for MemoryDataRepository {
         let mut store = self.memory_corpus.write().await;
         if let Some(corpus) = store.get_mut(user_id) {
             for (key, value) in updates {
-                // Simplified update logic - actual implementation would need to handle specific fields
-                if key == "core_profile.current_life_summary" {
-                    if let Some(summary) = value.as_str() {
-                        corpus.core_profile.current_life_summary = Some(summary.to_string());
+                match key.as_str() {
+                    "core_profile.name" => {
+                        if let Some(name) = value.as_str() {
+                            corpus.core_profile.name = Some(name.to_string());
+                        }
+                    }
+                    "core_profile.age" => {
+                        if let Some(age) = value.as_u64() {
+                            corpus.core_profile.age = Some(age as u32);
+                        }
+                    }
+                    "core_profile.city" => {
+                        if let Some(city) = value.as_str() {
+                            corpus.core_profile.city = Some(city.to_string());
+                        }
+                    }
+                    "core_profile.occupation" => {
+                        if let Some(occupation) = value.as_str() {
+                            corpus.core_profile.occupation = Some(occupation.to_string());
+                        }
+                    }
+                    "core_profile.current_life_summary" => {
+                        if let Some(summary) = value.as_str() {
+                            corpus.core_profile.current_life_summary = Some(summary.to_string());
+                        }
+                    }
+                    // Add more fields here as needed
+                    _ => {
+                        // Optionally log or handle unknown keys
                     }
                 }
             }
             corpus.updated_at = Utc::now();
-            Ok(())
+            self.save_to_file().await
         } else {
             Err(MemoryError::DocumentNotFound {
                 document_type: "MemoryCorpus".to_string(),
@@ -77,7 +168,7 @@ impl MemoryRepository for MemoryDataRepository {
             .entry(user_id.to_string())
             .or_default()
             .push(interaction.clone());
-        Ok(())
+        self.save_to_file().await
     }
 
     async fn search_memories(&self, query: &MemoryQuery) -> MemoryResult<Vec<MemoryFragment>> {
@@ -86,10 +177,16 @@ impl MemoryRepository for MemoryDataRepository {
 
         if let Some(user_id) = &query.user_id {
             if let Some(fragments) = store.get(user_id) {
+                let lower_query_text = query.query_text.to_lowercase();
+                let keywords: Vec<&str> = lower_query_text.split_whitespace().collect();
+
                 results.extend(
                     fragments
                         .iter()
-                        .filter(|f| f.content.contains(&query.query_text))
+                        .filter(|f| {
+                            let lower_content = f.content.to_lowercase();
+                            keywords.iter().all(|&keyword| lower_content.contains(keyword))
+                        })
                         .cloned(),
                 );
             }
@@ -112,9 +209,14 @@ impl MemoryRepository for MemoryDataRepository {
     }
 
     async fn get_user_statistics(&self, user_id: &str) -> MemoryResult<UserStatistics> {
-        let _corpus_store = self.memory_corpus.read().await;
+        let corpus_store = self.memory_corpus.read().await;
         let interaction_store = self.interactions.read().await;
         let fragment_store = self.memory_fragments.read().await;
+
+        let account_created = corpus_store
+            .get(user_id)
+            .map(|c| c.created_at)
+            .unwrap_or_else(Utc::now);
 
         let total_interactions = interaction_store.get(user_id).map_or(0, |v| v.len()) as u64;
         let total_memories = fragment_store.get(user_id).map_or(0, |v| v.len()) as u64;
@@ -133,6 +235,7 @@ impl MemoryRepository for MemoryDataRepository {
 
         Ok(UserStatistics {
             user_id: user_id.to_string(),
+            account_created,
             total_interactions,
             first_interaction,
             last_interaction,
@@ -150,7 +253,7 @@ impl MemoryRepository for MemoryDataRepository {
         interaction_store.remove(user_id);
         fragment_store.remove(user_id);
 
-        Ok(())
+        self.save_to_file().await
     }
 
     async fn health_check(&self) -> MemoryResult<bool> {
@@ -158,6 +261,6 @@ impl MemoryRepository for MemoryDataRepository {
     }
 
     async fn initialize(&self) -> MemoryResult<()> {
-        Ok(())
+        self.load_from_file().await
     }
 }
