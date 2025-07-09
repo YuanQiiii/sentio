@@ -3,28 +3,10 @@
   "memory_fragments": [],
   "interaction_logs": [
     {
-      "id": "5e147662-4023-447d-82d7-b2a26bab6424",
+      "id": "c54c1cf7-f42a-47bf-8991-3131da5edb90",
       "user_id": "demo_user_001",
-      "session_id": "e4f4da32-8c16-4e35-8482-5b2c089be6f9",
-      "timestamp": "2025-07-07T07:45:37.679473174Z",
-      "direction": "user_to_system",
-      "content": "你好，我是新用户，请问你能帮我管理邮件吗？",
-      "metadata": {}
-    },
-    {
-      "id": "e9be16d8-205c-4ea9-8954-f0939f611caa",
-      "user_id": "demo_user_001",
-      "session_id": "fc90b664-2ea5-4527-8b05-876c96088fea",
-      "timestamp": "2025-07-07T07:47:12.854374880Z",
-      "direction": "user_to_system",
-      "content": "你好，我是新用户，请问你能帮我管理邮件吗？",
-      "metadata": {}
-    },
-    {
-      "id": "95b67b8a-ae5b-4ec4-ad13-144cbf49f4ac",
-      "user_id": "demo_user_001",
-      "session_id": "4322bb38-a1cb-4564-aa49-5bcc253d0c35",
-      "timestamp": "2025-07-07T07:58:33.605242841Z",
+      "session_id": "99502e3b-a1e5-4831-8fec-3138ac31bb08",
+      "timestamp": "2025-07-09T10:22:37.983067282Z",
       "direction": "user_to_system",
       "content": "你好，我是新用户，请问你能帮我管理邮件吗？",
       "metadata": {}
@@ -32,7 +14,7 @@
   ],
   "metrics": {
     "reads": 0,
-    "writes": 3,
+    "writes": 1,
     "query_hits": 0,
     "query_misses": 0
   }
