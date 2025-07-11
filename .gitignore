@@ -8,10 +8,8 @@ Cargo.lock
 *.swp
 *.swo
 
-# Environment
-.env
-.env.local
-.env.production
+# Configuration
+sentio.toml
 
 # Logs
 *.log

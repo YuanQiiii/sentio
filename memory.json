@@ -1,21 +1,60 @@
 {
-  "memory_corpus": [],
-  "memory_fragments": [],
-  "interaction_logs": [
-    {
-      "id": "c54c1cf7-f42a-47bf-8991-3131da5edb90",
-      "user_id": "demo_user_001",
-      "session_id": "99502e3b-a1e5-4831-8fec-3138ac31bb08",
-      "timestamp": "2025-07-09T10:22:37.983067282Z",
-      "direction": "user_to_system",
-      "content": "你好，我是新用户，请问你能帮我管理邮件吗？",
-      "metadata": {}
-    }
-  ],
-  "metrics": {
-    "reads": 0,
-    "writes": 1,
-    "query_hits": 0,
-    "query_misses": 0
+  "memories": {
+    "user@example.com": [
+      {
+        "id": "bceb2bc8-2d28-416f-900c-3e9394d360b8",
+        "user_id": "user@example.com",
+        "memory_type": "event",
+        "content": "Email analysis for '项目进展咨询': 请提供具体的邮件内容，这样我才能根据内容进行分析和分类。",
+        "created_at": "2025-07-11T03:51:21.136385761Z"
+      },
+      {
+        "id": "4b2df32e-792a-4db3-8f3c-7843556b0ee8",
+        "user_id": "user@example.com",
+        "memory_type": "event",
+        "content": "Email analysis for '项目进展咨询': 请提供具体的邮件内容，这样我才能根据内容进行准确分类。您可以将邮件内容粘贴在这里，我会根据您提供的文本进行分析和分类。",
+        "created_at": "2025-07-11T03:54:16.793302818Z"
+      }
+    ]
+  },
+  "interactions": {
+    "user@example.com": [
+      {
+        "id": "ed7795d2-3bb8-445b-96df-d2a717674ef4",
+        "user_id": "user@example.com",
+        "session_id": "9f248eee-84be-4877-bf0d-4c7affd7c39f",
+        "timestamp": "2025-07-11T03:44:20.693377155Z",
+        "direction": "user_to_system",
+        "content": "Subject: 项目进展咨询\n\n您好，请问最新的项目进展如何？有什么需要我协助的吗？",
+        "metadata": {}
+      },
+      {
+        "id": "4814cc10-cae2-4732-848c-0ef0fc2dc19a",
+        "user_id": "user@example.com",
+        "session_id": "71631f32-64a8-46ef-a648-fd4168843e46",
+        "timestamp": "2025-07-11T03:51:20.229241107Z",
+        "direction": "user_to_system",
+        "content": "Subject: 项目进展咨询\n\n您好，请问最新的项目进展如何？有什么需要我协助的吗？",
+        "metadata": {}
+      },
+      {
+        "id": "e073ea91-1927-4198-a01e-379d296a95d7",
+        "user_id": "user@example.com",
+        "session_id": "a0510110-f0dc-4aa3-a65a-0d1b42d8fd92",
+        "timestamp": "2025-07-11T03:54:14.587216920Z",
+        "direction": "user_to_system",
+        "content": "Subject: 项目进展咨询\n\n您好，请问最新的项目进展如何？有什么需要我协助的吗？",
+        "metadata": {}
+      },
+      {
+        "id": "562dd519-d11f-47e5-a5eb-25b6e0642c7f",
+        "user_id": "user@example.com",
+        "session_id": "a18cd516-fecc-44b4-84b8-8cacf7908cbf",
+        "timestamp": "2025-07-11T03:54:47.879392031Z",
+        "direction": "user_to_system",
+        "content": "Subject: 项目进展咨询\n\n您好，请问最新的项目进展如何？有什么需要我协助的吗？",
+        "metadata": {}
+      }
+    ]
   }
 }
